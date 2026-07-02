@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const features = [
   "Create workspaces for frontend projects",
   "Define fake REST endpoints with JSON responses",
@@ -47,18 +49,18 @@ export default function Home() {
               generating docs from the endpoint configuration.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a
+              <Link
                 href="/dashboard"
                 className="rounded-lg bg-cyan-600 px-5 py-3 text-center text-sm font-black text-white shadow-sm transition hover:bg-cyan-700"
               >
                 Start building
-              </a>
-              <a
+              </Link>
+              <Link
                 href="/docs/demo-store"
                 className="rounded-lg border border-slate-300 bg-white px-5 py-3 text-center text-sm font-black text-slate-800 transition hover:border-slate-400"
               >
                 View sample docs
-              </a>
+              </Link>
             </div>
           </div>
 

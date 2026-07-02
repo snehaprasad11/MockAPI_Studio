@@ -1,0 +1,51 @@
+import { NextResponse } from "next/server";
+
+import { createSessionToken, getSessionCookieName, hashPassword } from "@/lib/auth";
+import { execute, queryOne } from "@/lib/db";
+import { badRequest, serverError } from "@/lib/responses";
+import { ensureObjectBody } from "@/lib/validation";
+
+type ExistingUserRow = {
+  id: number;
+};
+
+export async function POST(request: Request) {
+  try {
+    const body = ensureObjectBody(await request.json());
+    const name = String(body.name ?? "").trim();
+    const email = String(body.email ?? "").trim().toLowerCase();
+    const password = String(body.password ?? "");
+
+    if (!name || !email || password.length < 8) {
+      return badRequest("Name, email, and an 8+ character password are required.");
+    }
+
+    const existing = await queryOne<ExistingUserRow>(
+      "SELECT id FROM users WHERE email = :email",
+      { email },
+    );
+
+    if (existing) return badRequest("An account with this email already exists.");
+
+    const result = await execute(
+      `
+        INSERT INTO users (name, email, password_hash)
+        VALUES (:name, :email, :passwordHash)
+      `,
+      { name, email, passwordHash: hashPassword(password) },
+    );
+
+    const response = NextResponse.json({ ok: true });
+    response.cookies.set(getSessionCookieName(), createSessionToken(result.insertId), {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+
+    return response;
+  } catch (error) {
+    if (error instanceof Error) return badRequest(error.message);
+    return serverError(error);
+  }
+}
