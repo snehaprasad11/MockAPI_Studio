@@ -2,7 +2,7 @@ import { execute } from "@/lib/db";
 import { badRequest, serverError, unauthorized } from "@/lib/responses";
 import { getCurrentUser } from "@/lib/session";
 import { normalizeEndpointPath } from "@/lib/slug";
-import { ensureObjectBody, isHttpMethod } from "@/lib/validation";
+import { ensureObjectBody, isHttpMethod, parseDelay, parseStatusCode } from "@/lib/validation";
 
 type RouteContext = {
   params: Promise<{
@@ -34,10 +34,10 @@ export async function PUT(request: Request, context: RouteContext) {
           e.description = :description,
           e.status_code = :statusCode,
           e.response_delay_ms = :responseDelayMs,
-          e.response_body = CAST(:responseBody AS JSON),
+          e.response_body = :responseBody,
           e.error_enabled = :errorEnabled,
           e.error_status_code = :errorStatusCode,
-          e.error_body = CAST(:errorBody AS JSON)
+          e.error_body = :errorBody
         WHERE e.id = :endpointId
           AND w.user_id = :userId
       `,
@@ -48,11 +48,11 @@ export async function PUT(request: Request, context: RouteContext) {
         path,
         name: String(body.name ?? "").trim() || `${method} ${path}`,
         description: String(body.description ?? "").trim() || null,
-        statusCode: Number(body.statusCode ?? 200),
-        responseDelayMs: Number(body.responseDelayMs ?? 0),
+        statusCode: parseStatusCode(body.statusCode, 200),
+        responseDelayMs: parseDelay(body.responseDelayMs),
         responseBody: JSON.stringify(body.responseBody ?? {}),
         errorEnabled: Boolean(body.errorEnabled),
-        errorStatusCode: Number(body.errorStatusCode ?? 500),
+        errorStatusCode: parseStatusCode(body.errorStatusCode, 500),
         errorBody: JSON.stringify(body.errorBody ?? { error: "Mock error" }),
       },
     );

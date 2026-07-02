@@ -14,6 +14,24 @@ export function parseJsonInput(value: string) {
   }
 }
 
+export function parseStatusCode(value: unknown, fallback = 200) {
+  const statusCode = Number(value ?? fallback);
+  if (!Number.isInteger(statusCode) || statusCode < 100 || statusCode > 599) {
+    throw new Error("Status code must be an integer between 100 and 599.");
+  }
+
+  return statusCode;
+}
+
+export function parseDelay(value: unknown) {
+  const delay = Number(value ?? 0);
+  if (!Number.isInteger(delay) || delay < 0 || delay > 10000) {
+    throw new Error("Response delay must be an integer from 0 to 10000 ms.");
+  }
+
+  return delay;
+}
+
 export function ensureObjectBody(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Request body must be a JSON object.");

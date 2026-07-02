@@ -126,8 +126,8 @@ async function logRequest(
         :method,
         :endpointPath,
         :statusCode,
-        CAST(:requestBody AS JSON),
-        CAST(:responseBody AS JSON),
+        :requestBody,
+        :responseBody,
         :ipAddress,
         :userAgent
       )

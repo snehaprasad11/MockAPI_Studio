@@ -4,7 +4,7 @@ import { badRequest, serverError, unauthorized } from "@/lib/responses";
 import { getCurrentUser } from "@/lib/session";
 import { normalizeEndpointPath } from "@/lib/slug";
 import type { HttpMethod } from "@/lib/types";
-import { ensureObjectBody, isHttpMethod } from "@/lib/validation";
+import { ensureObjectBody, isHttpMethod, parseDelay, parseStatusCode } from "@/lib/validation";
 
 type EndpointRow = {
   id: number;
@@ -64,8 +64,8 @@ export async function POST(request: Request, context: RouteContext) {
     const path = normalizeEndpointPath(String(body.path ?? ""));
     const name = String(body.name ?? "").trim() || `${method} ${path}`;
     const description = String(body.description ?? "").trim() || null;
-    const statusCode = Number(body.statusCode ?? 200);
-    const responseDelayMs = Number(body.responseDelayMs ?? 0);
+    const statusCode = parseStatusCode(body.statusCode, 200);
+    const responseDelayMs = parseDelay(body.responseDelayMs);
     const responseBody = JSON.stringify(body.responseBody ?? {});
 
     if (!isHttpMethod(method)) return badRequest("Unsupported HTTP method.");
@@ -91,7 +91,7 @@ export async function POST(request: Request, context: RouteContext) {
           :description,
           :statusCode,
           :responseDelayMs,
-          CAST(:responseBody AS JSON)
+          :responseBody
         FROM workspaces w
         WHERE w.id = :workspaceId
           AND w.user_id = :userId

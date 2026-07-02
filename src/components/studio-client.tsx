@@ -24,6 +24,8 @@ export function StudioClient() {
   const [status, setStatus] = useState<ApiState>("idle");
   const [message, setMessage] = useState("");
   const [testOutput, setTestOutput] = useState("Run a mock endpoint to see the JSON response.");
+  const [editingEndpoint, setEditingEndpoint] = useState<MockEndpoint | null>(null);
+  const [copiedUrl, setCopiedUrl] = useState("");
 
   const selectedWorkspace = useMemo(
     () => workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ?? null,
@@ -141,30 +143,70 @@ export function StudioClient() {
       return;
     }
 
-    const response = await fetch(`/api/workspaces/${selectedWorkspace.id}/endpoints`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        method: String(formData.get("method") ?? "GET") as HttpMethod,
-        path: String(formData.get("path") ?? ""),
-        name: String(formData.get("name") ?? ""),
-        description: String(formData.get("description") ?? ""),
-        statusCode: Number(formData.get("statusCode") ?? 200),
-        responseDelayMs: Number(formData.get("responseDelayMs") ?? 0),
-        responseBody,
-      }),
-    });
+    const payload = {
+      method: String(formData.get("method") ?? "GET") as HttpMethod,
+      path: String(formData.get("path") ?? ""),
+      name: String(formData.get("name") ?? ""),
+      description: String(formData.get("description") ?? ""),
+      statusCode: Number(formData.get("statusCode") ?? 200),
+      responseDelayMs: Number(formData.get("responseDelayMs") ?? 0),
+      responseBody,
+      errorEnabled: formData.get("errorEnabled") === "on",
+      errorStatusCode: Number(formData.get("errorStatusCode") ?? 500),
+      errorBody: { error: String(formData.get("errorMessage") ?? "Mock error") },
+    };
+
+    const response = await fetch(
+      editingEndpoint
+        ? `/api/endpoints/${editingEndpoint.id}`
+        : `/api/workspaces/${selectedWorkspace.id}/endpoints`,
+      {
+        method: editingEndpoint ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
 
     const data = (await response.json()) as { error?: string };
     if (!response.ok) {
       setStatus("error");
-      setMessage(data.error ?? "Could not create endpoint.");
+      setMessage(data.error ?? "Could not save endpoint.");
       return;
     }
 
     setStatus("success");
-    setMessage("Endpoint created.");
+    setMessage(editingEndpoint ? "Endpoint updated." : "Endpoint created.");
+    setEditingEndpoint(null);
     await loadEndpoints(selectedWorkspace.id);
+  }
+
+  async function deleteEndpoint(endpoint: MockEndpoint) {
+    if (!selectedWorkspace) return;
+
+    const confirmed = window.confirm(`Delete ${endpoint.method} ${endpoint.path}?`);
+    if (!confirmed) return;
+
+    const response = await fetch(`/api/endpoints/${endpoint.id}`, { method: "DELETE" });
+    const data = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setStatus("error");
+      setMessage(data.error ?? "Could not delete endpoint.");
+      return;
+    }
+
+    setStatus("success");
+    setMessage("Endpoint deleted.");
+    if (editingEndpoint?.id === endpoint.id) setEditingEndpoint(null);
+    await loadEndpoints(selectedWorkspace.id);
+  }
+
+  async function copyEndpointUrl(endpoint: MockEndpoint) {
+    if (!selectedWorkspace) return;
+
+    const url = `${window.location.origin}/api/mock/${selectedWorkspace.slug}${endpoint.path}`;
+    await navigator.clipboard.writeText(url);
+    setCopiedUrl(url);
+    setTimeout(() => setCopiedUrl(""), 1800);
   }
 
   async function testEndpoint(endpoint: MockEndpoint) {
@@ -172,13 +214,21 @@ export function StudioClient() {
     const url = `/api/mock/${selectedWorkspace.slug}${endpoint.path}`;
     setTestOutput(`Calling ${endpoint.method} ${url} ...`);
 
+    const startedAt = performance.now();
     const response = await fetch(url, { method: endpoint.method });
     const text = await response.text();
+    const duration = Math.round(performance.now() - startedAt);
 
     try {
-      setTestOutput(JSON.stringify(JSON.parse(text), null, 2));
+      setTestOutput(
+        `Status: ${response.status} ${response.statusText}\nTime: ${duration} ms\n\n${JSON.stringify(
+          JSON.parse(text),
+          null,
+          2,
+        )}`,
+      );
     } catch {
-      setTestOutput(text);
+      setTestOutput(`Status: ${response.status} ${response.statusText}\nTime: ${duration} ms\n\n${text}`);
     }
 
     await loadLogs(selectedWorkspace.id);
@@ -249,11 +299,27 @@ export function StudioClient() {
               {selectedWorkspace ? (
                 <>
                   <CreateEndpointForm workspace={selectedWorkspace} onSubmit={createEndpoint} />
+                  {copiedUrl ? (
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+                      Copied {copiedUrl}
+                    </div>
+                  ) : null}
                   <EndpointList
                     endpoints={endpoints}
                     workspace={selectedWorkspace}
                     onTest={testEndpoint}
+                    onEdit={setEditingEndpoint}
+                    onDelete={deleteEndpoint}
+                    onCopy={copyEndpointUrl}
                   />
+                  {editingEndpoint ? (
+                    <EditEndpointPanel
+                      key={editingEndpoint.id}
+                      endpoint={editingEndpoint}
+                      onCancel={() => setEditingEndpoint(null)}
+                      onSubmit={createEndpoint}
+                    />
+                  ) : null}
                   <TestConsole output={testOutput} />
                   <RequestLogList logs={logs} />
                 </>
@@ -398,12 +464,12 @@ function CreateEndpointForm({
           <p className="text-sm font-black text-cyan-700">/{workspace.slug}</p>
           <h2 className="text-xl font-black">Create Endpoint</h2>
         </div>
-        <a
+        <Link
           href={`/docs/${workspace.slug}`}
           className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-black"
         >
           Public docs
-        </a>
+        </Link>
       </div>
       <form action={onSubmit} className="mt-5 grid gap-4 lg:grid-cols-2">
         <label className="grid gap-2 text-sm font-bold text-slate-700">
@@ -443,8 +509,116 @@ function CreateEndpointForm({
           />
           {aiStatus ? <span className="text-xs font-bold text-slate-500">{aiStatus}</span> : null}
         </label>
+        <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 lg:col-span-2 md:grid-cols-[1fr_160px_1fr]">
+          <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+            <input name="errorEnabled" type="checkbox" className="size-4 rounded border-slate-300" />
+            Simulate error response
+          </label>
+          <Input name="errorStatusCode" label="Error status" placeholder="500" type="number" />
+          <Input name="errorMessage" label="Error message" placeholder="Something went wrong" />
+        </div>
         <button className="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-black text-white lg:col-span-2">
           Save endpoint
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function EditEndpointPanel({
+  endpoint,
+  onCancel,
+  onSubmit,
+}: {
+  endpoint: MockEndpoint;
+  onCancel: () => void;
+  onSubmit: (formData: FormData) => void;
+}) {
+  const [jsonDraft, setJsonDraft] = useState(JSON.stringify(endpoint.responseBody, null, 2));
+
+  return (
+    <section className="rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-black text-cyan-700">Editing endpoint</p>
+          <h2 className="text-xl font-black">
+            {endpoint.method} {endpoint.path}
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-black"
+        >
+          Cancel
+        </button>
+      </div>
+      <form action={onSubmit} className="mt-5 grid gap-4 lg:grid-cols-2">
+        <label className="grid gap-2 text-sm font-bold text-slate-700">
+          Method
+          <select
+            name="method"
+            defaultValue={endpoint.method}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-3"
+          >
+            {["GET", "POST", "PUT", "PATCH", "DELETE"].map((method) => (
+              <option key={method}>{method}</option>
+            ))}
+          </select>
+        </label>
+        <Input name="path" label="Path" placeholder="/products" defaultValue={endpoint.path} />
+        <Input name="name" label="Endpoint name" placeholder="List products" defaultValue={endpoint.name} />
+        <Input
+          name="statusCode"
+          label="Status code"
+          placeholder="200"
+          type="number"
+          defaultValue={String(endpoint.statusCode)}
+        />
+        <Input
+          name="responseDelayMs"
+          label="Delay in ms"
+          placeholder="0"
+          type="number"
+          defaultValue={String(endpoint.responseDelayMs)}
+        />
+        <TextArea
+          name="description"
+          label="Description"
+          placeholder="Returns products for the storefront."
+          defaultValue={endpoint.description ?? ""}
+        />
+        <label className="grid gap-2 text-sm font-bold text-slate-700 lg:col-span-2">
+          JSON response
+          <textarea
+            name="responseBody"
+            value={jsonDraft}
+            onChange={(event) => setJsonDraft(event.target.value)}
+            rows={9}
+            className="rounded-lg border border-slate-300 bg-slate-950 px-3 py-3 font-mono text-sm text-slate-50 outline-none ring-cyan-500 focus:ring-2"
+          />
+        </label>
+        <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 lg:col-span-2 md:grid-cols-[1fr_160px_1fr]">
+          <label className="flex items-center gap-2 text-sm font-bold text-slate-700">
+            <input
+              name="errorEnabled"
+              type="checkbox"
+              defaultChecked={endpoint.errorEnabled}
+              className="size-4 rounded border-slate-300"
+            />
+            Simulate error response
+          </label>
+          <Input
+            name="errorStatusCode"
+            label="Error status"
+            placeholder="500"
+            type="number"
+            defaultValue={String(endpoint.errorStatusCode)}
+          />
+          <Input name="errorMessage" label="Error message" placeholder="Something went wrong" />
+        </div>
+        <button className="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-black text-white lg:col-span-2">
+          Update endpoint
         </button>
       </form>
     </section>
@@ -455,10 +629,16 @@ function EndpointList({
   endpoints,
   workspace,
   onTest,
+  onEdit,
+  onDelete,
+  onCopy,
 }: {
   endpoints: MockEndpoint[];
   workspace: Workspace;
   onTest: (endpoint: MockEndpoint) => void;
+  onEdit: (endpoint: MockEndpoint) => void;
+  onDelete: (endpoint: MockEndpoint) => void;
+  onCopy: (endpoint: MockEndpoint) => void;
 }) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -480,12 +660,32 @@ function EndpointList({
                 </div>
                 <p className="mt-2 text-sm font-bold text-slate-600">{endpoint.name}</p>
               </div>
-              <button
-                onClick={() => onTest(endpoint)}
-                className="rounded-lg border border-cyan-300 bg-cyan-50 px-4 py-2 text-sm font-black text-cyan-800"
-              >
-                Test
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => onCopy(endpoint)}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-black text-slate-700"
+                >
+                  Copy URL
+                </button>
+                <button
+                  onClick={() => onEdit(endpoint)}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-black text-slate-700"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => onTest(endpoint)}
+                  className="rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-2 text-sm font-black text-cyan-800"
+                >
+                  Test
+                </button>
+                <button
+                  onClick={() => onDelete(endpoint)}
+                  className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-black text-rose-700"
+                >
+                  Delete
+                </button>
+              </div>
             </article>
           );
         })}
@@ -509,11 +709,30 @@ function TestConsole({ output }: { output: string }) {
 }
 
 function RequestLogList({ logs }: { logs: RequestLog[] }) {
+  const [filter, setFilter] = useState("");
+  const filteredLogs = logs.filter((log) => {
+    const query = filter.toLowerCase().trim();
+    if (!query) return true;
+    return (
+      log.method.toLowerCase().includes(query) ||
+      log.path.toLowerCase().includes(query) ||
+      String(log.statusCode).includes(query)
+    );
+  });
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="text-xl font-black">Request History</h2>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <h2 className="text-xl font-black">Request History</h2>
+        <input
+          value={filter}
+          onChange={(event) => setFilter(event.target.value)}
+          placeholder="Filter method, path, status"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold outline-none ring-cyan-500 focus:ring-2"
+        />
+      </div>
       <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
-        {logs.map((log) => (
+        {filteredLogs.map((log) => (
           <div
             key={log.id}
             className="grid gap-2 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0 md:grid-cols-[90px_1fr_90px_170px]"
@@ -529,6 +748,10 @@ function RequestLogList({ logs }: { logs: RequestLog[] }) {
         {logs.length === 0 ? (
           <p className="px-4 py-5 text-sm font-medium text-slate-500">
             Requests will appear here after you test public mock URLs.
+          </p>
+        ) : filteredLogs.length === 0 ? (
+          <p className="px-4 py-5 text-sm font-medium text-slate-500">
+            No request logs match this filter.
           </p>
         ) : null}
       </div>
@@ -552,11 +775,13 @@ function Input({
   name,
   placeholder,
   type = "text",
+  defaultValue,
 }: {
   label: string;
   name: string;
   placeholder: string;
   type?: string;
+  defaultValue?: string;
 }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-slate-700">
@@ -565,6 +790,7 @@ function Input({
         name={name}
         placeholder={placeholder}
         type={type}
+        defaultValue={defaultValue}
         className="rounded-lg border border-slate-300 bg-white px-3 py-3 outline-none ring-cyan-500 focus:ring-2"
       />
     </label>
@@ -575,10 +801,12 @@ function TextArea({
   label,
   name,
   placeholder,
+  defaultValue,
 }: {
   label: string;
   name: string;
   placeholder: string;
+  defaultValue?: string;
 }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-slate-700">
@@ -586,6 +814,7 @@ function TextArea({
       <textarea
         name={name}
         placeholder={placeholder}
+        defaultValue={defaultValue}
         rows={3}
         className="rounded-lg border border-slate-300 bg-white px-3 py-3 outline-none ring-cyan-500 focus:ring-2"
       />
