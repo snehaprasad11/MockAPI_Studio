@@ -1,36 +1,224 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MockAPI Studio
 
-## Getting Started
+MockAPI Studio is a full-stack developer SaaS project where frontend developers can create fake REST API endpoints, store JSON responses, share public test URLs, view generated API docs, and inspect request history.
 
-First, run the development server:
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue)
+![Tailwind](https://img.shields.io/badge/Tailwind-CSS-38bdf8)
+![MySQL](https://img.shields.io/badge/MySQL-Database-4479a1)
+![Ollama](https://img.shields.io/badge/Ollama-Optional%20Local%20LLM-222)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Why This Exists
+
+Frontend teams often wait for backend endpoints before they can finish screens, API states, loading flows, and error states. MockAPI Studio solves that by letting developers define mock endpoints in a workspace and instantly test them through public URLs.
+
+Example:
+
+```text
+GET /api/mock/demo-store/products
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Returns:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```json
+[
+  {
+    "id": 1,
+    "name": "Launch Kit",
+    "price": 49,
+    "inStock": true
+  }
+]
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Features
 
-## Learn More
+- User registration and login with cookie-based sessions.
+- Workspace creation for projects or frontend features.
+- Mock endpoint builder with method, path, status code, delay, and JSON response.
+- Public mock endpoint runtime under `/api/mock/:workspaceSlug/:path`.
+- Auto-generated public API docs for each workspace.
+- Request history logs for tested endpoints.
+- Optional local Ollama integration to generate sample JSON responses.
+- MySQL schema and seed data for local development.
+- Portfolio-ready product landing page and dashboard UI.
 
-To learn more about Next.js, take a look at the following resources:
+## Tech Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Layer | Tools |
+| --- | --- |
+| Frontend | Next.js App Router, React, TypeScript, Tailwind CSS |
+| Backend | Next.js Route Handlers |
+| Database | MySQL with `mysql2` |
+| Auth | Custom password hashing and signed HTTP-only cookie sessions |
+| Optional AI | Local Ollama only, no paid API required |
+| Tooling | ESLint, TypeScript, pnpm |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project Structure
 
-## Deploy on Vercel
+```text
+database/
+  schema.sql             MySQL database schema
+  seed.sql               Demo workspace and endpoint data
+src/app/
+  api/                   Auth, workspace, endpoint, mock runtime, Ollama APIs
+  dashboard/             Authenticated studio interface
+  docs/[workspaceSlug]/  Public generated API docs
+  page.tsx               Product landing page
+src/components/
+  studio-client.tsx      Dashboard client UI
+src/lib/
+  auth.ts                Password hashing and session tokens
+  db.ts                  MySQL connection pool
+  mappers.ts             Database row to UI model mapping
+  session.ts             Current-user lookup
+  slug.ts                Workspace and endpoint path helpers
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Local Setup
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 1. Install dependencies
+
+```bash
+pnpm install
+```
+
+### 2. Configure environment
+
+Copy `.env.example` to `.env.local`:
+
+```bash
+cp .env.example .env.local
+```
+
+Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+Update MySQL values:
+
+```env
+DATABASE_HOST=localhost
+DATABASE_PORT=3306
+DATABASE_USER=root
+DATABASE_PASSWORD=password
+DATABASE_NAME=mockapi_studio
+SESSION_SECRET=replace-with-a-long-random-string
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.2
+```
+
+### 3. Create the database
+
+Run this in MySQL:
+
+```sql
+SOURCE database/schema.sql;
+SOURCE database/seed.sql;
+```
+
+The schema file resets the `mockapi_studio` database, so run it only when you want a fresh local database.
+
+Demo login after seeding:
+
+```text
+Email: demo@mockapi.local
+Password: password123
+```
+
+### 4. Start the app
+
+```bash
+pnpm dev
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+## Main User Flow
+
+1. Register or log in.
+2. Create a workspace such as `Demo Store`.
+3. Create an endpoint such as `GET /products`.
+4. Save a JSON response.
+5. Test the generated URL:
+
+```text
+/api/mock/demo-store/products
+```
+
+6. View generated docs:
+
+```text
+/docs/demo-store
+```
+
+7. Inspect request history inside the dashboard.
+
+## API Overview
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/auth/register` | Create account |
+| `POST` | `/api/auth/login` | Login |
+| `POST` | `/api/auth/logout` | Logout |
+| `GET` | `/api/auth/me` | Current session |
+| `GET` | `/api/workspaces` | List user workspaces |
+| `POST` | `/api/workspaces` | Create workspace |
+| `GET` | `/api/workspaces/:id/endpoints` | List endpoints |
+| `POST` | `/api/workspaces/:id/endpoints` | Create endpoint |
+| `PUT` | `/api/endpoints/:id` | Update endpoint |
+| `DELETE` | `/api/endpoints/:id` | Delete endpoint |
+| `GET` | `/api/workspaces/:id/logs` | Request history |
+| `ANY` | `/api/mock/:workspaceSlug/:path` | Public mock endpoint |
+| `POST` | `/api/ollama/sample` | Generate sample JSON using local Ollama |
+
+## Optional Local LLM
+
+This project does not use paid APIs. If Ollama is installed locally, the dashboard can call:
+
+```text
+http://localhost:11434/api/generate
+```
+
+The button "Generate with local Ollama" creates sample JSON for an endpoint description. If Ollama is not running, the rest of the app still works.
+
+## Validation
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm build
+```
+
+## Deployment Notes
+
+This is a full-stack app with MySQL, so it needs a host that supports:
+
+- Node.js server runtime
+- Environment variables
+- A reachable MySQL database
+
+Good free/local-first demo options:
+
+- Run locally and record a demo video.
+- Deploy the app to a Node-friendly platform with a free tier if available.
+- Use a local MySQL database for live walkthroughs.
+
+Avoid static-only hosts for the full app because the mock endpoint runtime and database APIs require a server.
+
+## Resume Bullets
+
+- Built a full-stack developer SaaS for creating mock REST APIs using Next.js, TypeScript, Tailwind CSS, and MySQL.
+- Implemented authenticated workspaces, dynamic mock endpoint routing, generated API docs, request logging, and JSON response simulation.
+- Added optional local Ollama integration to generate sample API JSON without relying on paid AI APIs.
+- Designed a relational MySQL schema for users, workspaces, endpoints, and request logs with clean route-level access control.
+
+## Status
+
+Active build. Core product flows are implemented and committed in milestones.
