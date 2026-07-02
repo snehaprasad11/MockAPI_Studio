@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { HttpMethod, MockEndpoint, User, Workspace } from "@/lib/types";
+import type { HttpMethod, MockEndpoint, RequestLog, User, Workspace } from "@/lib/types";
 
 const starterJson = `{
   "id": 1,
@@ -19,6 +19,7 @@ export function StudioClient() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<number | null>(null);
   const [endpoints, setEndpoints] = useState<MockEndpoint[]>([]);
+  const [logs, setLogs] = useState<RequestLog[]>([]);
   const [authMode, setAuthMode] = useState<"login" | "register">("register");
   const [status, setStatus] = useState<ApiState>("idle");
   const [message, setMessage] = useState("");
@@ -51,7 +52,10 @@ export function StudioClient() {
   }, [refreshSession]);
 
   useEffect(() => {
-    if (selectedWorkspaceId) void loadEndpoints(selectedWorkspaceId);
+    if (selectedWorkspaceId) {
+      void loadEndpoints(selectedWorkspaceId);
+      void loadLogs(selectedWorkspaceId);
+    }
   }, [selectedWorkspaceId]);
 
   async function loadEndpoints(workspaceId: number) {
@@ -59,6 +63,13 @@ export function StudioClient() {
     if (!response.ok) return;
     const data = (await response.json()) as { endpoints: MockEndpoint[] };
     setEndpoints(data.endpoints);
+  }
+
+  async function loadLogs(workspaceId: number) {
+    const response = await fetch(`/api/workspaces/${workspaceId}/logs`);
+    if (!response.ok) return;
+    const data = (await response.json()) as { logs: RequestLog[] };
+    setLogs(data.logs);
   }
 
   async function handleAuth(formData: FormData) {
@@ -169,6 +180,8 @@ export function StudioClient() {
     } catch {
       setTestOutput(text);
     }
+
+    await loadLogs(selectedWorkspace.id);
   }
 
   async function logout() {
@@ -242,6 +255,7 @@ export function StudioClient() {
                     onTest={testEndpoint}
                   />
                   <TestConsole output={testOutput} />
+                  <RequestLogList logs={logs} />
                 </>
               ) : (
                 <EmptyState />
@@ -348,6 +362,35 @@ function CreateEndpointForm({
   workspace: Workspace;
   onSubmit: (formData: FormData) => void;
 }) {
+  const [jsonDraft, setJsonDraft] = useState(starterJson);
+  const [aiStatus, setAiStatus] = useState("");
+
+  async function generateSample(form: HTMLFormElement | null) {
+    if (!form) return;
+    setAiStatus("Asking local Ollama...");
+
+    const formData = new FormData(form);
+    const response = await fetch("/api/ollama/sample", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        method: String(formData.get("method") ?? "GET"),
+        path: String(formData.get("path") ?? "/items"),
+        name: String(formData.get("name") ?? "Sample endpoint"),
+        description: String(formData.get("description") ?? ""),
+      }),
+    });
+
+    const data = (await response.json()) as { json?: unknown; error?: string };
+    if (!response.ok) {
+      setAiStatus(data.error ?? "Ollama generation failed.");
+      return;
+    }
+
+    setJsonDraft(JSON.stringify(data.json ?? {}, null, 2));
+    setAiStatus("Sample JSON generated locally.");
+  }
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
@@ -381,13 +424,24 @@ function CreateEndpointForm({
           placeholder="Returns products for the storefront."
         />
         <label className="grid gap-2 text-sm font-bold text-slate-700 lg:col-span-2">
-          JSON response
+          <span className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <span>JSON response</span>
+            <button
+              type="button"
+              onClick={(event) => void generateSample(event.currentTarget.form)}
+              className="rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-2 text-xs font-black text-cyan-800"
+            >
+              Generate with local Ollama
+            </button>
+          </span>
           <textarea
             name="responseBody"
-            defaultValue={starterJson}
+            value={jsonDraft}
+            onChange={(event) => setJsonDraft(event.target.value)}
             rows={9}
             className="rounded-lg border border-slate-300 bg-slate-950 px-3 py-3 font-mono text-sm text-slate-50 outline-none ring-cyan-500 focus:ring-2"
           />
+          {aiStatus ? <span className="text-xs font-bold text-slate-500">{aiStatus}</span> : null}
         </label>
         <button className="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-black text-white lg:col-span-2">
           Save endpoint
@@ -450,6 +504,34 @@ function TestConsole({ output }: { output: string }) {
       <pre className="mt-4 min-h-48 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm leading-6 text-slate-100">
         {output}
       </pre>
+    </section>
+  );
+}
+
+function RequestLogList({ logs }: { logs: RequestLog[] }) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 className="text-xl font-black">Request History</h2>
+      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
+        {logs.map((log) => (
+          <div
+            key={log.id}
+            className="grid gap-2 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0 md:grid-cols-[90px_1fr_90px_170px]"
+          >
+            <span className="font-black text-slate-950">{log.method}</span>
+            <code className="font-bold text-slate-700">{log.path}</code>
+            <span className="font-black text-cyan-700">{log.statusCode}</span>
+            <span className="font-medium text-slate-500">
+              {new Date(log.createdAt).toLocaleString()}
+            </span>
+          </div>
+        ))}
+        {logs.length === 0 ? (
+          <p className="px-4 py-5 text-sm font-medium text-slate-500">
+            Requests will appear here after you test public mock URLs.
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }
