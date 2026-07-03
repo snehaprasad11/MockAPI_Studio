@@ -8,6 +8,12 @@ MockAPI Studio is a full-stack developer SaaS project where frontend developers 
 ![MySQL](https://img.shields.io/badge/MySQL-Database-4479a1)
 ![Ollama](https://img.shields.io/badge/Ollama-Optional%20Local%20LLM-222)
 
+## Demo Video
+
+[Watch the MockAPI Studio demo video](docs/demo/mockapi-studio-demo.mp4)
+
+The demo shows the landing page, authentication, workspace dashboard, endpoint testing, generated docs, and OpenAPI export.
+
 ## Screenshots
 
 | Landing Page | Studio Auth |
