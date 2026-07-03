@@ -18,6 +18,27 @@ type OpenApiOperation = {
 
 type OpenApiPathItem = Partial<Record<Lowercase<MockEndpoint["method"]>, OpenApiOperation>>;
 
+type OpenApiDocument = {
+  openapi: string;
+  info: {
+    title: string;
+    description: string;
+    version: string;
+  };
+  servers: Array<{ url: string }>;
+  paths: Record<string, OpenApiPathItem>;
+  components?: {
+    securitySchemes: {
+      MockApiKey: {
+        type: "apiKey";
+        in: "header";
+        name: "x-mockapi-key";
+      };
+    };
+  };
+  security?: Array<{ MockApiKey: never[] }>;
+};
+
 export function buildOpenApiDocument(workspace: Workspace, endpoints: MockEndpoint[], baseUrl: string) {
   const paths = endpoints.reduce<Record<string, OpenApiPathItem>>((accumulator, endpoint) => {
     const method = endpoint.method.toLowerCase() as Lowercase<MockEndpoint["method"]>;
@@ -44,7 +65,7 @@ export function buildOpenApiDocument(workspace: Workspace, endpoints: MockEndpoi
     return accumulator;
   }, {});
 
-  return {
+  const document: OpenApiDocument = {
     openapi: "3.1.0",
     info: {
       title: `${workspace.name} Mock API`,
@@ -58,5 +79,21 @@ export function buildOpenApiDocument(workspace: Workspace, endpoints: MockEndpoi
       },
     ],
     paths,
+  };
+
+  if (!workspace.apiKeyEnabled) return document;
+
+  return {
+    ...document,
+    components: {
+      securitySchemes: {
+        MockApiKey: {
+          type: "apiKey",
+          in: "header",
+          name: "x-mockapi-key",
+        },
+      },
+    },
+    security: [{ MockApiKey: [] }],
   };
 }

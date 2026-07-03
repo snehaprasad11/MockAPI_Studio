@@ -9,6 +9,8 @@ const workspace: Workspace = {
   name: "Demo Store",
   slug: "demo-store",
   description: "Mock ecommerce endpoints.",
+  apiKeyEnabled: false,
+  apiKeyPrefix: null,
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
@@ -40,5 +42,16 @@ describe("buildOpenApiDocument", () => {
     expect(document.paths["/products"]?.get?.responses["200"].content["application/json"].example).toEqual([
       { id: 1, name: "Launch Kit" },
     ]);
+  });
+
+  it("includes an API-key security scheme when workspace protection is enabled", () => {
+    const document = buildOpenApiDocument(
+      { ...workspace, apiKeyEnabled: true, apiKeyPrefix: "mk_live_demo" },
+      [endpoint],
+      "http://localhost:3000",
+    );
+
+    expect(document.security).toEqual([{ MockApiKey: [] }]);
+    expect(document.components?.securitySchemes.MockApiKey.name).toBe("x-mockapi-key");
   });
 });

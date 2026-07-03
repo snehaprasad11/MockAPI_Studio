@@ -13,6 +13,8 @@ export type Workspace = {
   name: string;
   slug: string;
   description: string | null;
+  apiKeyEnabled: boolean;
+  apiKeyPrefix: string | null;
   createdAt: string;
   updatedAt: string;
 };

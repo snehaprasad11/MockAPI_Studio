@@ -51,12 +51,15 @@ Returns:
 - Workspace creation for projects or frontend features.
 - Mock endpoint builder with method, path, status code, delay, and JSON response.
 - Public mock endpoint runtime under `/api/mock/:workspaceSlug/:path`.
+- Optional API key protection for public mock endpoints through `x-mockapi-key`.
 - Auto-generated public API docs for each workspace.
 - OpenAPI JSON export for every workspace.
 - Dashboard metrics for endpoints, recent requests, simulated delay, and error scenarios.
 - Request history logs for tested endpoints.
+- Search and pagination support on endpoint and request-log APIs.
 - Optional local Ollama integration to generate sample JSON responses.
-- MySQL schema and seed data for local development.
+- MySQL schema, non-destructive migrations, and seed data for local development.
+- GitHub Actions CI for typecheck, lint, tests, and production build.
 - Portfolio-ready product landing page and dashboard UI.
 
 ## Tech Stack
@@ -76,6 +79,7 @@ Returns:
 database/
   schema.sql             MySQL database schema
   seed.sql               Demo workspace and endpoint data
+  migrations/            Non-destructive setup and upgrade SQL
 src/app/
   api/                   Auth, workspace, endpoint, mock runtime, Ollama APIs
   dashboard/             Authenticated studio interface
@@ -175,11 +179,12 @@ Windows PowerShell, if MySQL is installed in the default location:
 Then run this inside the MySQL prompt:
 
 ```sql
-SOURCE database/schema.sql;
+SOURCE database/migrations/001_initial_schema.sql;
+SOURCE database/migrations/002_workspace_api_keys.sql;
 SOURCE database/seed.sql;
 ```
 
-The schema file resets the `mockapi_studio` database, so run it only when you want a fresh local database.
+The migration files are non-destructive. If you want a completely fresh local database for a demo, use `database/schema.sql` first, then seed again.
 
 Demo login after seeding:
 
@@ -242,14 +247,21 @@ If the app starts but login fails, the database probably has not been seeded yet
 | `GET` | `/api/auth/me` | Current session |
 | `GET` | `/api/workspaces` | List user workspaces |
 | `POST` | `/api/workspaces` | Create workspace |
-| `GET` | `/api/workspaces/:id/endpoints` | List endpoints |
+| `POST` | `/api/workspaces/:id/api-key` | Enable, disable, or rotate workspace API key |
+| `GET` | `/api/workspaces/:id/endpoints` | List endpoints with `q`, `method`, `limit`, `offset` |
 | `POST` | `/api/workspaces/:id/endpoints` | Create endpoint |
 | `PUT` | `/api/endpoints/:id` | Update endpoint |
 | `DELETE` | `/api/endpoints/:id` | Delete endpoint |
-| `GET` | `/api/workspaces/:id/logs` | Request history |
+| `GET` | `/api/workspaces/:id/logs` | Request history with `q`, `limit`, `offset` |
 | `ANY` | `/api/mock/:workspaceSlug/:path` | Public mock endpoint |
 | `GET` | `/api/docs/:workspaceSlug/openapi` | Public OpenAPI JSON |
 | `POST` | `/api/ollama/sample` | Generate sample JSON using local Ollama |
+
+Protected mock endpoints accept the generated API key through:
+
+```text
+x-mockapi-key: mk_live_...
+```
 
 ## Optional Local LLM
 

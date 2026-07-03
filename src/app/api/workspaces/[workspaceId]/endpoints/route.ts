@@ -4,7 +4,13 @@ import { badRequest, serverError, unauthorized } from "@/lib/responses";
 import { getCurrentUser } from "@/lib/session";
 import { normalizeEndpointPath } from "@/lib/slug";
 import type { HttpMethod } from "@/lib/types";
-import { ensureObjectBody, isHttpMethod, parseDelay, parseStatusCode } from "@/lib/validation";
+import {
+  ensureObjectBody,
+  isHttpMethod,
+  parseDelay,
+  parsePagination,
+  parseStatusCode,
+} from "@/lib/validation";
 
 type EndpointRow = {
   id: number;
@@ -29,12 +35,21 @@ type RouteContext = {
   }>;
 };
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
     const user = await getCurrentUser();
     if (!user) return unauthorized();
 
     const { workspaceId } = await context.params;
+    const url = new URL(request.url);
+    const { limit, offset } = parsePagination(url);
+    const search = String(url.searchParams.get("q") ?? "").trim();
+    const methodFilter = String(url.searchParams.get("method") ?? "").toUpperCase();
+
+    if (methodFilter && !isHttpMethod(methodFilter)) {
+      return badRequest("Unsupported HTTP method filter.");
+    }
+
     const rows = await queryRows<EndpointRow>(
       `
         SELECT e.*
@@ -42,13 +57,28 @@ export async function GET(_request: Request, context: RouteContext) {
         JOIN workspaces w ON w.id = e.workspace_id
         WHERE e.workspace_id = :workspaceId
           AND w.user_id = :userId
+          AND (:methodFilter = '' OR e.method = :methodFilter)
+          AND (
+            :search = ''
+            OR e.path LIKE :searchLike
+            OR e.name LIKE :searchLike
+            OR e.description LIKE :searchLike
+        )
         ORDER BY e.updated_at DESC
+        LIMIT ${limit} OFFSET ${offset}
       `,
-      { workspaceId: Number(workspaceId), userId: user.id },
+      {
+        workspaceId: Number(workspaceId),
+        userId: user.id,
+        methodFilter,
+        search,
+        searchLike: `%${search}%`,
+      },
     );
 
-    return Response.json({ endpoints: rows.map(mapEndpoint) });
+    return Response.json({ endpoints: rows.map(mapEndpoint), meta: { limit, offset } });
   } catch (error) {
+    if (error instanceof Error) return badRequest(error.message);
     return serverError(error);
   }
 }

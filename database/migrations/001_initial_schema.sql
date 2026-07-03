@@ -1,8 +1,7 @@
-DROP DATABASE IF EXISTS mockapi_studio;
-CREATE DATABASE mockapi_studio;
+CREATE DATABASE IF NOT EXISTS mockapi_studio;
 USE mockapi_studio;
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(120) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -10,7 +9,7 @@ CREATE TABLE users (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE workspaces (
+CREATE TABLE IF NOT EXISTS workspaces (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id BIGINT NOT NULL,
     name VARCHAR(140) NOT NULL,
@@ -26,7 +25,7 @@ CREATE TABLE workspaces (
         ON DELETE CASCADE
 );
 
-CREATE TABLE endpoints (
+CREATE TABLE IF NOT EXISTS endpoints (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     workspace_id BIGINT NOT NULL,
     method ENUM('GET', 'POST', 'PUT', 'PATCH', 'DELETE') NOT NULL,
@@ -47,7 +46,7 @@ CREATE TABLE endpoints (
         ON DELETE CASCADE
 );
 
-CREATE TABLE request_logs (
+CREATE TABLE IF NOT EXISTS request_logs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     endpoint_id BIGINT,
     workspace_slug VARCHAR(160) NOT NULL,

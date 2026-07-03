@@ -17,6 +17,8 @@ type WorkspaceRow = {
   name: string;
   slug: string;
   description: string | null;
+  api_key_enabled: 0 | 1 | boolean;
+  api_key_prefix: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 };
@@ -42,7 +44,16 @@ export default async function PublicDocsPage({ params }: PageProps) {
   const { workspaceSlug } = await params;
   const workspaceRow = await queryOne<WorkspaceRow>(
     `
-      SELECT id, user_id, name, slug, description, created_at, updated_at
+      SELECT
+        id,
+        user_id,
+        name,
+        slug,
+        description,
+        api_key_enabled,
+        api_key_prefix,
+        created_at,
+        updated_at
       FROM workspaces
       WHERE slug = :workspaceSlug
     `,
@@ -80,6 +91,11 @@ export default async function PublicDocsPage({ params }: PageProps) {
                 {workspace.description ||
                   "This workspace exposes mock API endpoints for frontend testing."}
               </p>
+              {workspace.apiKeyEnabled ? (
+                <p className="mt-3 text-sm font-bold text-cyan-700">
+                  This workspace expects the `x-mockapi-key` header for public mock requests.
+                </p>
+              ) : null}
             </div>
             <a
               href={`/api/docs/${workspace.slug}/openapi`}
@@ -123,7 +139,9 @@ export default async function PublicDocsPage({ params }: PageProps) {
                     Test command
                   </p>
                   <pre className="mt-2 overflow-x-auto rounded-lg bg-slate-100 p-4 text-sm font-bold text-slate-800">
-                    {`curl -i -X ${endpoint.method} "${mockUrl}"`}
+                    {workspace.apiKeyEnabled
+                      ? `curl -i -X ${endpoint.method} "${mockUrl}" -H "x-mockapi-key: YOUR_KEY"`
+                      : `curl -i -X ${endpoint.method} "${mockUrl}"`}
                   </pre>
                 </div>
               </article>

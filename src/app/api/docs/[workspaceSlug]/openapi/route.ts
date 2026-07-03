@@ -15,6 +15,8 @@ type WorkspaceRow = {
   name: string;
   slug: string;
   description: string | null;
+  api_key_enabled: 0 | 1 | boolean;
+  api_key_prefix: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 };
@@ -40,7 +42,16 @@ export async function GET(request: Request, context: RouteContext) {
   const { workspaceSlug } = await context.params;
   const workspaceRow = await queryOne<WorkspaceRow>(
     `
-      SELECT id, user_id, name, slug, description, created_at, updated_at
+      SELECT
+        id,
+        user_id,
+        name,
+        slug,
+        description,
+        api_key_enabled,
+        api_key_prefix,
+        created_at,
+        updated_at
       FROM workspaces
       WHERE slug = :workspaceSlug
     `,

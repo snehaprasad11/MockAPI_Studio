@@ -13,7 +13,7 @@ Docs viewer -> /api/docs/:workspace/openapi -> Generated OpenAPI JSON
 ## Core Tables
 
 - `users`: account identity and password hash.
-- `workspaces`: user-owned API collections with public slugs.
+- `workspaces`: user-owned API collections with public slugs and optional mock API-key metadata.
 - `endpoints`: mock route definitions and JSON response bodies.
 - `request_logs`: runtime calls made to public mock URLs.
 
@@ -26,6 +26,14 @@ The dynamic route:
 ```
 
 matches incoming method and path against stored endpoint rows. If found, it returns the stored JSON response and writes a request log. If delay simulation is configured, the route waits before responding.
+
+If API-key protection is enabled for a workspace, the runtime requires:
+
+```text
+x-mockapi-key: <generated key>
+```
+
+Only the key hash is stored in MySQL. The plaintext key is shown once after generation or rotation.
 
 ## Public Documentation
 
@@ -50,6 +58,12 @@ Auth is intentionally simple and portfolio-friendly:
 - Passwords are hashed with Node `crypto.scryptSync`.
 - Sessions are signed with HMAC and stored in HTTP-only cookies.
 - Dashboard APIs call `getCurrentUser()` before reading or writing user-owned data.
+
+## Operational Hardening
+
+- Non-destructive migrations live in `database/migrations`.
+- Endpoint and request-log list APIs support `q`, `limit`, and `offset`.
+- GitHub Actions runs typecheck, lint, tests, and production build on pushes and pull requests.
 
 ## Local LLM
 

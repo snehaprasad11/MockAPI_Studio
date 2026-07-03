@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { isHttpMethod, parseDelay, parseJsonInput, parseStatusCode } from "./validation";
+import {
+  isHttpMethod,
+  parseDelay,
+  parseJsonInput,
+  parsePagination,
+  parseStatusCode,
+} from "./validation";
 
 describe("validation helpers", () => {
   it("accepts supported HTTP methods only", () => {
@@ -18,5 +24,12 @@ describe("validation helpers", () => {
     expect(() => parseStatusCode(600)).toThrow();
     expect(() => parseDelay(-1)).toThrow();
     expect(() => parseDelay(10001)).toThrow();
+  });
+
+  it("parses bounded pagination options", () => {
+    const url = new URL("http://localhost/api?limit=25&offset=50");
+    expect(parsePagination(url)).toEqual({ limit: 25, offset: 50 });
+    expect(() => parsePagination(new URL("http://localhost/api?limit=500"))).toThrow();
+    expect(() => parsePagination(new URL("http://localhost/api?offset=-1"))).toThrow();
   });
 });

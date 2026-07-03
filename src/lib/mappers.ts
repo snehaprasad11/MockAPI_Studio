@@ -13,6 +13,8 @@ type WorkspaceRow = {
   name: string;
   slug: string;
   description: string | null;
+  api_key_enabled?: 0 | 1 | boolean;
+  api_key_prefix?: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 };
@@ -64,6 +66,8 @@ export function mapWorkspace(row: WorkspaceRow): Workspace {
     name: row.name,
     slug: row.slug,
     description: row.description,
+    apiKeyEnabled: Boolean(row.api_key_enabled),
+    apiKeyPrefix: row.api_key_prefix ?? null,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
   };

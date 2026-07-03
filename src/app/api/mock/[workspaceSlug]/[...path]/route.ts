@@ -1,8 +1,11 @@
+import { verifyApiKey } from "@/lib/api-keys";
 import { execute, queryOne } from "@/lib/db";
 import { parseJsonValue } from "@/lib/mappers";
 
 type EndpointRow = {
   id: number;
+  api_key_enabled: 0 | 1 | boolean;
+  api_key_hash: string | null;
   status_code: number;
   response_delay_ms: number;
   response_body: unknown;
@@ -47,6 +50,8 @@ async function handleMockRequest(request: Request, context: RouteContext) {
     `
       SELECT
         e.id,
+        w.api_key_enabled,
+        w.api_key_hash,
         e.status_code,
         e.response_delay_ms,
         e.response_body,
@@ -70,6 +75,22 @@ async function handleMockRequest(request: Request, context: RouteContext) {
       },
       { status: 404 },
     );
+  }
+
+  if (Boolean(endpoint.api_key_enabled)) {
+    const apiKey = request.headers.get("x-mockapi-key");
+    if (!verifyApiKey(apiKey, endpoint.api_key_hash)) {
+      await logRequest(request, {
+        endpointId: endpoint.id,
+        workspaceSlug,
+        method,
+        endpointPath,
+        statusCode: 401,
+        responseBody: { error: "Missing or invalid mock API key" },
+      });
+
+      return Response.json({ error: "Missing or invalid mock API key" }, { status: 401 });
+    }
   }
 
   if (endpoint.response_delay_ms > 0) {

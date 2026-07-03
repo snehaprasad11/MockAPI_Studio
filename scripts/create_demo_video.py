@@ -472,11 +472,13 @@ def make_summary_slide(output_path: Path) -> None:
         "Endpoint builder: method, path, status, delay, JSON",
         "Error response simulation",
         "Public mock URLs for frontend testing",
+        "API key protection for mock URLs",
         "Dashboard metrics and request history",
         "Generated public docs and curl examples",
         "OpenAPI JSON export",
         "Optional local Ollama JSON generation",
-        "MySQL schema and seed data",
+        "MySQL migrations and seed data",
+        "GitHub Actions CI validation",
     ]
     x_positions = [92, 690]
     for index, feature in enumerate(features):

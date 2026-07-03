@@ -32,6 +32,21 @@ export function parseDelay(value: unknown) {
   return delay;
 }
 
+export function parsePagination(url: URL) {
+  const limit = Number(url.searchParams.get("limit") ?? 50);
+  const offset = Number(url.searchParams.get("offset") ?? 0);
+
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new Error("Limit must be an integer from 1 to 100.");
+  }
+
+  if (!Number.isInteger(offset) || offset < 0) {
+    throw new Error("Offset must be a non-negative integer.");
+  }
+
+  return { limit, offset };
+}
+
 export function ensureObjectBody(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Request body must be a JSON object.");
