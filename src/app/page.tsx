@@ -7,8 +7,6 @@ const features = [
   "Generate API docs and request logs automatically",
 ];
 
-const stack = ["Next.js", "TypeScript", "Tailwind CSS", "MySQL", "Ollama optional"];
-
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#f7f9fc] text-slate-950">
@@ -98,16 +96,6 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-5">
-          {stack.map((item) => (
-            <span
-              key={item}
-              className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 shadow-sm"
-            >
-              {item}
-            </span>
-          ))}
-        </div>
       </section>
     </main>
   );

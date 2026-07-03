@@ -14,7 +14,7 @@ Repository: [snehaprasad11/MockAPI_Studio](https://github.com/snehaprasad11/Mock
 
 [Watch the MockAPI Studio demo video](docs/demo/mockapi-studio-demo.mp4)
 
-The demo shows the landing page, authentication, workspace dashboard, endpoint testing, generated docs, and OpenAPI export.
+The demo covers the landing page, authentication, workspace creation, endpoint builder, JSON/status/delay/error settings, public mock URLs, dashboard metrics, request history, generated docs, OpenAPI export, optional Ollama generation, and MySQL persistence.
 
 ## Screenshots
 
