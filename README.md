@@ -108,13 +108,20 @@ Update MySQL values:
 ```env
 DATABASE_HOST=localhost
 DATABASE_PORT=3306
-DATABASE_USER=root
-DATABASE_PASSWORD=password
+DATABASE_USER=your_mysql_username
+DATABASE_PASSWORD=your_mysql_password
 DATABASE_NAME=mockapi_studio
-SESSION_SECRET=replace-with-a-long-random-string
+SESSION_SECRET=generate-a-long-random-string
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.2
 ```
+
+Security note:
+
+- Keep real credentials only in `.env.local`.
+- `.env.local` is ignored by Git and should never be committed.
+- Do not use your MySQL `root` account for deployment. Create a project-specific MySQL user with only the permissions this app needs.
+- If a real database password is ever pushed to GitHub, change that password immediately.
 
 ### 3. Create the database
 
