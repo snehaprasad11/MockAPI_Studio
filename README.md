@@ -2,6 +2,8 @@
 
 MockAPI Studio is a full-stack developer SaaS project where frontend developers can create fake REST API endpoints, store JSON responses, share public test URLs, view generated API docs, and inspect request history.
 
+Repository: [snehaprasad11/MockAPI_Studio](https://github.com/snehaprasad11/MockAPI_Studio)
+
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue)
 ![Tailwind](https://img.shields.io/badge/Tailwind-CSS-38bdf8)
@@ -92,13 +94,35 @@ src/lib/
 
 ## Local Setup
 
-### 1. Install dependencies
+These steps are written for someone running the project from a fresh clone.
+
+### Prerequisites
+
+- Node.js 20 or newer
+- pnpm
+- MySQL 8.x running locally
+- Optional: Ollama, only if the reviewer wants to try local AI-generated sample JSON
+
+Install pnpm if it is not already installed:
+
+```bash
+npm install -g pnpm
+```
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/snehaprasad11/MockAPI_Studio.git
+cd MockAPI_Studio
+```
+
+### 2. Install dependencies
 
 ```bash
 pnpm install
 ```
 
-### 2. Configure environment
+### 3. Configure environment
 
 Copy `.env.example` to `.env.local`:
 
@@ -132,9 +156,23 @@ Security note:
 - Do not use your MySQL `root` account for deployment. Create a project-specific MySQL user with only the permissions this app needs.
 - If a real database password is ever pushed to GitHub, change that password immediately.
 
-### 3. Create the database
+### 4. Create and seed the database
 
-Run this in MySQL:
+From the project root, open MySQL and run the schema plus seed files.
+
+macOS/Linux:
+
+```bash
+mysql -u your_mysql_username -p
+```
+
+Windows PowerShell, if MySQL is installed in the default location:
+
+```powershell
+& "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u your_mysql_username -p
+```
+
+Then run this inside the MySQL prompt:
 
 ```sql
 SOURCE database/schema.sql;
@@ -150,7 +188,7 @@ Email: demo@mockapi.local
 Password: password123
 ```
 
-### 4. Start the app
+### 5. Start the app
 
 ```bash
 pnpm dev
@@ -161,6 +199,18 @@ Open:
 ```text
 http://localhost:3000
 ```
+
+### 6. Verify the main demo flow
+
+1. Open `http://localhost:3000`.
+2. Go to `Dashboard`.
+3. Log in with `demo@mockapi.local` and `password123`.
+4. Select the seeded `Demo Store` workspace.
+5. Click `Test` on `GET /api/mock/demo-store/products`.
+6. Open `http://localhost:3000/docs/demo-store` to see generated public docs.
+7. Open `http://localhost:3000/api/docs/demo-store/openapi` to see the generated OpenAPI JSON.
+
+If the app starts but login fails, the database probably has not been seeded yet. Re-run `SOURCE database/schema.sql;` and `SOURCE database/seed.sql;` from the project root inside MySQL.
 
 ## Main User Flow
 
