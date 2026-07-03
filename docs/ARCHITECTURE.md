@@ -7,6 +7,7 @@ MockAPI Studio is a Next.js full-stack app with server-rendered pages, client da
 ```text
 User -> Dashboard -> Next.js API routes -> MySQL
 Frontend test app -> /api/mock/:workspace/:path -> Stored endpoint response -> Request log
+Docs viewer -> /api/docs/:workspace/openapi -> Generated OpenAPI JSON
 ```
 
 ## Core Tables
@@ -25,6 +26,22 @@ The dynamic route:
 ```
 
 matches incoming method and path against stored endpoint rows. If found, it returns the stored JSON response and writes a request log. If delay simulation is configured, the route waits before responding.
+
+## Public Documentation
+
+Each workspace gets a generated docs page at:
+
+```text
+/docs/[workspaceSlug]
+```
+
+The same workspace can also be exported as OpenAPI JSON:
+
+```text
+/api/docs/[workspaceSlug]/openapi
+```
+
+This makes the project useful for frontend testing and also easy to explain in interviews because the stored endpoint definitions become browsable documentation.
 
 ## Auth Model
 

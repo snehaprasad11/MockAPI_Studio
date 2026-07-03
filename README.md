@@ -44,6 +44,8 @@ Returns:
 - Mock endpoint builder with method, path, status code, delay, and JSON response.
 - Public mock endpoint runtime under `/api/mock/:workspaceSlug/:path`.
 - Auto-generated public API docs for each workspace.
+- OpenAPI JSON export for every workspace.
+- Dashboard metrics for endpoints, recent requests, simulated delay, and error scenarios.
 - Request history logs for tested endpoints.
 - Optional local Ollama integration to generate sample JSON responses.
 - MySQL schema and seed data for local development.
@@ -77,6 +79,7 @@ src/lib/
   auth.ts                Password hashing and session tokens
   db.ts                  MySQL connection pool
   mappers.ts             Database row to UI model mapping
+  openapi.ts             Workspace to OpenAPI document builder
   session.ts             Current-user lookup
   slug.ts                Workspace and endpoint path helpers
 ```
@@ -189,6 +192,7 @@ http://localhost:3000
 | `DELETE` | `/api/endpoints/:id` | Delete endpoint |
 | `GET` | `/api/workspaces/:id/logs` | Request history |
 | `ANY` | `/api/mock/:workspaceSlug/:path` | Public mock endpoint |
+| `GET` | `/api/docs/:workspaceSlug/openapi` | Public OpenAPI JSON |
 | `POST` | `/api/ollama/sample` | Generate sample JSON using local Ollama |
 
 ## Optional Local LLM

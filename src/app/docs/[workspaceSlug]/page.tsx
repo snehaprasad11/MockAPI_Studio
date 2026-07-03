@@ -70,14 +70,24 @@ export default async function PublicDocsPage({ params }: PageProps) {
           MockAPI Studio
         </Link>
         <div className="mt-5 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-black uppercase tracking-normal text-cyan-700">
-            Public API docs
-          </p>
-          <h1 className="mt-2 text-4xl font-black tracking-normal">{workspace.name}</h1>
-          <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
-            {workspace.description ||
-              "This workspace exposes mock API endpoints for frontend testing."}
-          </p>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-normal text-cyan-700">
+                Public API docs
+              </p>
+              <h1 className="mt-2 text-4xl font-black tracking-normal">{workspace.name}</h1>
+              <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
+                {workspace.description ||
+                  "This workspace exposes mock API endpoints for frontend testing."}
+              </p>
+            </div>
+            <a
+              href={`/api/docs/${workspace.slug}/openapi`}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-800"
+            >
+              OpenAPI JSON
+            </a>
+          </div>
         </div>
 
         <div className="mt-5 space-y-4">
@@ -108,6 +118,14 @@ export default async function PublicDocsPage({ params }: PageProps) {
                 <pre className="mt-4 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm leading-6 text-slate-100">
                   {JSON.stringify(endpoint.responseBody, null, 2)}
                 </pre>
+                <div className="mt-4">
+                  <p className="text-xs font-black uppercase tracking-normal text-slate-500">
+                    Test command
+                  </p>
+                  <pre className="mt-2 overflow-x-auto rounded-lg bg-slate-100 p-4 text-sm font-bold text-slate-800">
+                    {`curl -i -X ${endpoint.method} "${mockUrl}"`}
+                  </pre>
+                </div>
               </article>
             );
           })}

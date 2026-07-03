@@ -67,6 +67,9 @@ export async function POST(request: Request, context: RouteContext) {
     const statusCode = parseStatusCode(body.statusCode, 200);
     const responseDelayMs = parseDelay(body.responseDelayMs);
     const responseBody = JSON.stringify(body.responseBody ?? {});
+    const errorEnabled = Boolean(body.errorEnabled);
+    const errorStatusCode = parseStatusCode(body.errorStatusCode, 500);
+    const errorBody = JSON.stringify(body.errorBody ?? { error: "Mock error" });
 
     if (!isHttpMethod(method)) return badRequest("Unsupported HTTP method.");
     if (!path || path === "/") return badRequest("Endpoint path is required.");
@@ -81,7 +84,10 @@ export async function POST(request: Request, context: RouteContext) {
           description,
           status_code,
           response_delay_ms,
-          response_body
+          response_body,
+          error_enabled,
+          error_status_code,
+          error_body
         )
         SELECT
           w.id,
@@ -91,7 +97,10 @@ export async function POST(request: Request, context: RouteContext) {
           :description,
           :statusCode,
           :responseDelayMs,
-          :responseBody
+          :responseBody,
+          :errorEnabled,
+          :errorStatusCode,
+          :errorBody
         FROM workspaces w
         WHERE w.id = :workspaceId
           AND w.user_id = :userId
@@ -106,6 +115,9 @@ export async function POST(request: Request, context: RouteContext) {
         statusCode,
         responseDelayMs,
         responseBody,
+        errorEnabled,
+        errorStatusCode,
+        errorBody,
       },
     );
 
