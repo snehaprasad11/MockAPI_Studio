@@ -215,7 +215,9 @@ http://localhost:3000
 6. Open `http://localhost:3000/docs/demo-store` to see generated public docs.
 7. Open `http://localhost:3000/api/docs/demo-store/openapi` to see the generated OpenAPI JSON.
 
-If the app starts but login fails, the database probably has not been seeded yet. Re-run `SOURCE database/schema.sql;` and `SOURCE database/seed.sql;` from the project root inside MySQL.
+If the app starts but login fails, the database probably has not been seeded yet. Re-run the two migration files and `SOURCE database/seed.sql;` from the project root inside MySQL.
+
+If `pnpm` asks about approved builds, run `pnpm approve-builds`, approve the listed packages, and then run `pnpm install` again.
 
 ## Main User Flow
 
