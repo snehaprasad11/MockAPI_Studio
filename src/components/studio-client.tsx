@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type ChangeEventHandler,
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import type { HttpMethod, MockEndpoint, RequestLog, User, Workspace } from "@/lib/types";
 
@@ -169,12 +176,12 @@ export function StudioClient() {
       path: String(formData.get("path") ?? ""),
       name: String(formData.get("name") ?? ""),
       description: String(formData.get("description") ?? ""),
-      statusCode: Number(formData.get("statusCode") ?? 200),
-      responseDelayMs: Number(formData.get("responseDelayMs") ?? 0),
+      statusCode: numberField(formData, "statusCode", 200),
+      responseDelayMs: numberField(formData, "responseDelayMs", 0),
       responseBody,
       errorEnabled: formData.get("errorEnabled") === "on",
-      errorStatusCode: Number(formData.get("errorStatusCode") ?? 500),
-      errorBody: { error: String(formData.get("errorMessage") ?? "Mock error") },
+      errorStatusCode: numberField(formData, "errorStatusCode", 500),
+      errorBody: { error: textField(formData, "errorMessage", "Mock error") },
     };
 
     const response = await fetch(
@@ -225,9 +232,14 @@ export function StudioClient() {
     if (!selectedWorkspace) return;
 
     const url = `${window.location.origin}/api/mock/${selectedWorkspace.slug}${endpoint.path}`;
-    await navigator.clipboard.writeText(url);
-    setCopiedUrl(url);
-    setTimeout(() => setCopiedUrl(""), 1800);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedUrl(url);
+      setTimeout(() => setCopiedUrl(""), 1800);
+    } catch {
+      setStatus("error");
+      setMessage("Could not copy the URL automatically. Select and copy it from the endpoint list.");
+    }
   }
 
   async function testEndpoint(endpoint: MockEndpoint) {
@@ -406,6 +418,33 @@ export function StudioClient() {
   );
 }
 
+function submitClientForm(
+  event: FormEvent<HTMLFormElement>,
+  onSubmit: (formData: FormData) => void,
+) {
+  event.preventDefault();
+  onSubmit(new FormData(event.currentTarget));
+}
+
+function textField(formData: FormData, name: string, fallback = "") {
+  const value = String(formData.get(name) ?? "").trim();
+  return value || fallback;
+}
+
+function numberField(formData: FormData, name: string, fallback: number) {
+  const value = String(formData.get(name) ?? "").trim();
+  return value === "" ? fallback : Number(value);
+}
+
+function slugDraft(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
 function WorkspaceOverview({
   workspace,
   metrics,
@@ -561,11 +600,14 @@ function AuthPanel({
           </button>
         ))}
       </div>
-      <form action={onSubmit} className="space-y-4">
+      <form onSubmit={(event) => submitClientForm(event, onSubmit)} className="space-y-4">
         {authMode === "register" ? <Input name="name" label="Name" placeholder="Sneha" /> : null}
         <Input name="email" label="Email" placeholder="you@example.com" type="email" />
         <Input name="password" label="Password" placeholder="8+ characters" type="password" />
-        <button className="w-full rounded-lg bg-cyan-600 px-4 py-3 text-sm font-black text-white hover:bg-cyan-700">
+        <button
+          type="submit"
+          className="w-full rounded-lg bg-cyan-600 px-4 py-3 text-sm font-black text-white hover:bg-cyan-700"
+        >
           Continue
         </button>
       </form>
@@ -574,14 +616,50 @@ function AuthPanel({
 }
 
 function CreateWorkspaceForm({ onSubmit }: { onSubmit: (formData: FormData) => void }) {
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [description, setDescription] = useState("");
+  const [slugEdited, setSlugEdited] = useState(false);
+
+  function handleNameChange(value: string) {
+    setName(value);
+    if (!slugEdited) setSlug(slugDraft(value));
+  }
+
+  function handleSlugChange(value: string) {
+    setSlugEdited(true);
+    setSlug(slugDraft(value));
+  }
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-lg font-black">Create Workspace</h2>
-      <form action={onSubmit} className="mt-4 space-y-3">
-        <Input name="name" label="Workspace name" placeholder="Demo Store" />
-        <Input name="slug" label="Public slug" placeholder="demo-store" />
-        <TextArea name="description" label="Description" placeholder="Mock APIs for ecommerce UI" />
-        <button className="w-full rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white">
+      <form onSubmit={(event) => submitClientForm(event, onSubmit)} className="mt-4 space-y-3">
+        <Input
+          name="name"
+          label="Workspace name"
+          placeholder="Demo Store"
+          value={name}
+          onChange={(event) => handleNameChange(event.target.value)}
+        />
+        <Input
+          name="slug"
+          label="Public slug"
+          placeholder="demo-store"
+          value={slug}
+          onChange={(event) => handleSlugChange(event.target.value)}
+        />
+        <TextArea
+          name="description"
+          label="Description"
+          placeholder="Mock APIs for ecommerce UI"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+        />
+        <button
+          type="submit"
+          className="w-full rounded-lg bg-slate-950 px-4 py-3 text-sm font-black text-white"
+        >
           Create workspace
         </button>
       </form>
@@ -674,7 +752,7 @@ function CreateEndpointForm({
           Public docs
         </Link>
       </div>
-      <form action={onSubmit} className="mt-5 grid gap-4 lg:grid-cols-2">
+      <form onSubmit={(event) => submitClientForm(event, onSubmit)} className="mt-5 grid gap-4 lg:grid-cols-2">
         <label className="grid gap-2 text-sm font-bold text-slate-700">
           Method
           <select name="method" className="rounded-lg border border-slate-300 bg-white px-3 py-3">
@@ -720,7 +798,10 @@ function CreateEndpointForm({
           <Input name="errorStatusCode" label="Error status" placeholder="500" type="number" />
           <Input name="errorMessage" label="Error message" placeholder="Something went wrong" />
         </div>
-        <button className="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-black text-white lg:col-span-2">
+        <button
+          type="submit"
+          className="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-black text-white lg:col-span-2"
+        >
           Save endpoint
         </button>
       </form>
@@ -756,7 +837,7 @@ function EditEndpointPanel({
           Cancel
         </button>
       </div>
-      <form action={onSubmit} className="mt-5 grid gap-4 lg:grid-cols-2">
+      <form onSubmit={(event) => submitClientForm(event, onSubmit)} className="mt-5 grid gap-4 lg:grid-cols-2">
         <label className="grid gap-2 text-sm font-bold text-slate-700">
           Method
           <select
@@ -820,7 +901,10 @@ function EditEndpointPanel({
           />
           <Input name="errorMessage" label="Error message" placeholder="Something went wrong" />
         </div>
-        <button className="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-black text-white lg:col-span-2">
+        <button
+          type="submit"
+          className="rounded-lg bg-cyan-600 px-4 py-3 text-sm font-black text-white lg:col-span-2"
+        >
           Update endpoint
         </button>
       </form>
@@ -976,15 +1060,19 @@ function EmptyState() {
 function Input({
   label,
   name,
+  onChange,
   placeholder,
   type = "text",
   defaultValue,
+  value,
 }: {
   label: string;
   name: string;
+  onChange?: ChangeEventHandler<HTMLInputElement>;
   placeholder: string;
   type?: string;
   defaultValue?: string;
+  value?: string;
 }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-slate-700">
@@ -993,7 +1081,9 @@ function Input({
         name={name}
         placeholder={placeholder}
         type={type}
-        defaultValue={defaultValue}
+        defaultValue={value === undefined ? defaultValue : undefined}
+        value={value}
+        onChange={onChange}
         className="rounded-lg border border-slate-300 bg-white px-3 py-3 outline-none ring-cyan-500 focus:ring-2"
       />
     </label>
@@ -1003,13 +1093,17 @@ function Input({
 function TextArea({
   label,
   name,
+  onChange,
   placeholder,
   defaultValue,
+  value,
 }: {
   label: string;
   name: string;
+  onChange?: ChangeEventHandler<HTMLTextAreaElement>;
   placeholder: string;
   defaultValue?: string;
+  value?: string;
 }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-slate-700">
@@ -1017,7 +1111,9 @@ function TextArea({
       <textarea
         name={name}
         placeholder={placeholder}
-        defaultValue={defaultValue}
+        defaultValue={value === undefined ? defaultValue : undefined}
+        value={value}
+        onChange={onChange}
         rows={3}
         className="rounded-lg border border-slate-300 bg-white px-3 py-3 outline-none ring-cyan-500 focus:ring-2"
       />

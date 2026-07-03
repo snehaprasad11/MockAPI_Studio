@@ -83,6 +83,15 @@ export async function GET(request: Request, context: RouteContext) {
   }
 }
 
+function isDuplicateEntry(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ER_DUP_ENTRY"
+  );
+}
+
 export async function POST(request: Request, context: RouteContext) {
   try {
     const user = await getCurrentUser();
@@ -154,6 +163,9 @@ export async function POST(request: Request, context: RouteContext) {
     if (result.affectedRows === 0) return badRequest("Workspace not found.");
     return Response.json({ id: result.insertId }, { status: 201 });
   } catch (error) {
+    if (isDuplicateEntry(error)) {
+      return badRequest("An endpoint with this method and path already exists in this workspace.");
+    }
     if (error instanceof Error) return badRequest(error.message);
     return serverError(error);
   }

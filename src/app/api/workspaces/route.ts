@@ -55,7 +55,8 @@ export async function POST(request: Request) {
     const body = ensureObjectBody(await request.json());
     const name = String(body.name ?? "").trim();
     const description = String(body.description ?? "").trim() || null;
-    const slug = slugify(String(body.slug ?? name));
+    const slugInput = String(body.slug ?? "").trim();
+    const slug = slugify(slugInput || name);
 
     if (!name || !slug) return badRequest("Workspace name is required.");
 
@@ -69,7 +70,19 @@ export async function POST(request: Request) {
 
     return Response.json({ id: result.insertId, slug }, { status: 201 });
   } catch (error) {
+    if (isDuplicateEntry(error)) {
+      return badRequest("That public slug is already used. Choose a different workspace slug.");
+    }
     if (error instanceof Error) return badRequest(error.message);
     return serverError(error);
   }
+}
+
+function isDuplicateEntry(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ER_DUP_ENTRY"
+  );
 }

@@ -60,6 +60,9 @@ export async function PUT(request: Request, context: RouteContext) {
     if (result.affectedRows === 0) return badRequest("Endpoint not found.");
     return Response.json({ ok: true });
   } catch (error) {
+    if (isDuplicateEntry(error)) {
+      return badRequest("An endpoint with this method and path already exists in this workspace.");
+    }
     if (error instanceof Error) return badRequest(error.message);
     return serverError(error);
   }
@@ -87,4 +90,13 @@ export async function DELETE(_request: Request, context: RouteContext) {
   } catch (error) {
     return serverError(error);
   }
+}
+
+function isDuplicateEntry(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ER_DUP_ENTRY"
+  );
 }
