@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const getCurrentUserMock = vi.fn();
+const queryOneMock = vi.fn();
 const queryRowsMock = vi.fn();
 const executeMock = vi.fn();
 
@@ -9,6 +10,7 @@ vi.mock("@/lib/session", () => ({
 }));
 
 vi.mock("@/lib/db", () => ({
+  queryOne: (...args: unknown[]) => queryOneMock(...args),
   queryRows: (...args: unknown[]) => queryRowsMock(...args),
   execute: (...args: unknown[]) => executeMock(...args),
 }));
@@ -82,6 +84,7 @@ describe("workspace endpoints API", () => {
 
   it("creates an endpoint for the workspace", async () => {
     getCurrentUserMock.mockResolvedValueOnce({ id: 9 });
+    queryOneMock.mockResolvedValueOnce({ count: 3 });
     executeMock.mockResolvedValueOnce({ affectedRows: 1, insertId: 5 });
 
     const response = await POST(
@@ -96,11 +99,23 @@ describe("workspace endpoints API", () => {
 
   it("returns 400 when the workspace does not belong to the current user", async () => {
     getCurrentUserMock.mockResolvedValueOnce({ id: 9 });
+    queryOneMock.mockResolvedValueOnce({ count: 0 });
     executeMock.mockResolvedValueOnce({ affectedRows: 0, insertId: 0 });
 
     const response = await POST(createRequest({ method: "GET", path: "/products" }), context("1"));
 
     expect(response.status).toBe(400);
     expect((await response.json()).error).toBe("Workspace not found.");
+  });
+
+  it("rejects creating an endpoint once the workspace hits its endpoint limit", async () => {
+    getCurrentUserMock.mockResolvedValueOnce({ id: 9 });
+    queryOneMock.mockResolvedValueOnce({ count: 100 });
+
+    const response = await POST(createRequest({ method: "GET", path: "/products" }), context("1"));
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toMatch(/at most 100 endpoints/);
+    expect(executeMock).not.toHaveBeenCalled();
   });
 });

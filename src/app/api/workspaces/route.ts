@@ -1,4 +1,5 @@
-import { execute, queryRows } from "@/lib/db";
+import { execute, queryOne, queryRows } from "@/lib/db";
+import { MAX_WORKSPACES_PER_USER } from "@/lib/limits";
 import { mapWorkspace } from "@/lib/mappers";
 import { badRequest, serverError, unauthorized } from "@/lib/responses";
 import { getCurrentUser } from "@/lib/session";
@@ -59,6 +60,16 @@ export async function POST(request: Request) {
     const slug = slugify(slugInput || name);
 
     if (!name || !slug) return badRequest("Workspace name is required.");
+
+    const { count } =
+      (await queryOne<{ count: number }>(
+        "SELECT COUNT(*) as count FROM workspaces WHERE user_id = :userId",
+        { userId: user.id },
+      )) ?? { count: 0 };
+
+    if (Number(count) >= MAX_WORKSPACES_PER_USER) {
+      return badRequest(`You can have at most ${MAX_WORKSPACES_PER_USER} workspaces.`);
+    }
 
     const result = await execute(
       `

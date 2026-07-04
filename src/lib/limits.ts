@@ -1,0 +1,2 @@
+export const MAX_WORKSPACES_PER_USER = 20;
+export const MAX_ENDPOINTS_PER_WORKSPACE = 100;

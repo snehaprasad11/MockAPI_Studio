@@ -5,6 +5,7 @@ import type { Workspace } from "@/lib/types";
 export function WorkspaceOverview({
   workspace,
   metrics,
+  onDelete,
 }: {
   workspace: Workspace;
   metrics: {
@@ -15,6 +16,7 @@ export function WorkspaceOverview({
     averageDelay: number;
     errorScenarioCount: number;
   };
+  onDelete: () => void;
 }) {
   const stats = [
     { label: "Endpoints", value: metrics.endpointCount },
@@ -48,6 +50,12 @@ export function WorkspaceOverview({
           >
             OpenAPI
           </a>
+          <button
+            onClick={onDelete}
+            className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-black text-rose-700"
+          >
+            Delete workspace
+          </button>
         </div>
       </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

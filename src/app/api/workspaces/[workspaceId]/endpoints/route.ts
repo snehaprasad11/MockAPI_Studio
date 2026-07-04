@@ -1,4 +1,5 @@
-import { execute, queryRows } from "@/lib/db";
+import { execute, queryOne, queryRows } from "@/lib/db";
+import { MAX_ENDPOINTS_PER_WORKSPACE } from "@/lib/limits";
 import { mapEndpoint } from "@/lib/mappers";
 import { badRequest, serverError, unauthorized } from "@/lib/responses";
 import { getCurrentUser } from "@/lib/session";
@@ -112,6 +113,16 @@ export async function POST(request: Request, context: RouteContext) {
 
     if (!isHttpMethod(method)) return badRequest("Unsupported HTTP method.");
     if (!path || path === "/") return badRequest("Endpoint path is required.");
+
+    const { count } =
+      (await queryOne<{ count: number }>(
+        "SELECT COUNT(*) as count FROM endpoints WHERE workspace_id = :workspaceId",
+        { workspaceId: Number(workspaceId) },
+      )) ?? { count: 0 };
+
+    if (Number(count) >= MAX_ENDPOINTS_PER_WORKSPACE) {
+      return badRequest(`A workspace can have at most ${MAX_ENDPOINTS_PER_WORKSPACE} endpoints.`);
+    }
 
     const result = await execute(
       `
