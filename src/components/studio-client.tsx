@@ -303,6 +303,28 @@ export function StudioClient() {
     await loadWorkspaces();
   }
 
+  async function deleteWorkspace(workspace: Workspace) {
+    const confirmed = window.confirm(
+      `Delete workspace "${workspace.name}" and all of its endpoints? This cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    const response = await fetch(`/api/workspaces/${workspace.id}`, { method: "DELETE" });
+    const data = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setStatus("error");
+      setMessage(data.error ?? "Could not delete workspace.");
+      return;
+    }
+
+    setStatus("success");
+    setMessage("Workspace deleted.");
+    setSelectedWorkspaceId(null);
+    setEndpoints([]);
+    setLogs([]);
+    await loadWorkspaces();
+  }
+
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
@@ -367,7 +389,11 @@ export function StudioClient() {
             <section className="space-y-5">
               {selectedWorkspace ? (
                 <>
-                  <WorkspaceOverview workspace={selectedWorkspace} metrics={workspaceMetrics} />
+                  <WorkspaceOverview
+                    workspace={selectedWorkspace}
+                    metrics={workspaceMetrics}
+                    onDelete={() => deleteWorkspace(selectedWorkspace)}
+                  />
                   <ApiKeyPanel
                     apiKeyValue={apiKeyValue}
                     onDisable={() => updateWorkspaceApiKey(false, false)}

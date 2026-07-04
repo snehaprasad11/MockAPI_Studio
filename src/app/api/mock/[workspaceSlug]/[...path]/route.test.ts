@@ -10,7 +10,7 @@ vi.mock("@/lib/db", () => ({
 
 import { hashApiKey } from "@/lib/api-keys";
 
-import { GET } from "./route";
+import { GET, OPTIONS } from "./route";
 
 function context(workspaceSlug: string, path: string[]) {
   return { params: Promise.resolve({ workspaceSlug, path }) };
@@ -126,5 +126,35 @@ describe("GET /api/mock/:workspaceSlug/:path", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true });
+  });
+
+  it("sets CORS headers so any frontend origin can call it", async () => {
+    queryOneMock.mockResolvedValueOnce({
+      id: 5,
+      api_key_enabled: 0,
+      api_key_hash: null,
+      status_code: 200,
+      response_delay_ms: 0,
+      response_body: JSON.stringify({ ok: true }),
+      error_enabled: 0,
+      error_status_code: 500,
+      error_body: null,
+    });
+    executeMock.mockResolvedValueOnce({ insertId: 5 });
+
+    const response = await GET(
+      new Request("http://localhost/api/mock/demo-store/products"),
+      context("demo-store", ["products"]),
+    );
+
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+  });
+
+  it("responds to CORS preflight requests", async () => {
+    const response = await OPTIONS();
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Methods")).toContain("GET");
   });
 });

@@ -1,4 +1,5 @@
 import { verifyApiKey } from "@/lib/api-keys";
+import { corsPreflight, withCors } from "@/lib/cors";
 import { execute, queryOne } from "@/lib/db";
 import { parseJsonValue } from "@/lib/mappers";
 
@@ -41,6 +42,10 @@ export async function DELETE(request: Request, context: RouteContext) {
   return handleMockRequest(request, context);
 }
 
+export async function OPTIONS() {
+  return corsPreflight();
+}
+
 async function handleMockRequest(request: Request, context: RouteContext) {
   const { workspaceSlug, path } = await context.params;
   const endpointPath = `/${path.join("/")}`;
@@ -68,12 +73,14 @@ async function handleMockRequest(request: Request, context: RouteContext) {
   );
 
   if (!endpoint) {
-    return Response.json(
-      {
-        error: "Mock endpoint not found",
-        route: `${method} /api/mock/${workspaceSlug}${endpointPath}`,
-      },
-      { status: 404 },
+    return withCors(
+      Response.json(
+        {
+          error: "Mock endpoint not found",
+          route: `${method} /api/mock/${workspaceSlug}${endpointPath}`,
+        },
+        { status: 404 },
+      ),
     );
   }
 
@@ -89,7 +96,7 @@ async function handleMockRequest(request: Request, context: RouteContext) {
         responseBody: { error: "Missing or invalid mock API key" },
       });
 
-      return Response.json({ error: "Missing or invalid mock API key" }, { status: 401 });
+      return withCors(Response.json({ error: "Missing or invalid mock API key" }, { status: 401 }));
     }
   }
 
@@ -112,7 +119,7 @@ async function handleMockRequest(request: Request, context: RouteContext) {
     responseBody,
   });
 
-  return Response.json(responseBody, { status: statusCode });
+  return withCors(Response.json(responseBody, { status: statusCode }));
 }
 
 async function logRequest(

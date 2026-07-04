@@ -445,16 +445,17 @@ Step 4 returns your exact JSON with the status code you configured, and logs the
 | `POST` | `/api/auth/login` | Login (rate-limited: 5 attempts / 15 min per IP) |
 | `POST` | `/api/auth/logout` | Logout |
 | `GET` | `/api/auth/me` | Current session |
-| `GET` | `/api/workspaces` | List user workspaces |
+| `GET` | `/api/workspaces` | List user workspaces (max 20 per user) |
 | `POST` | `/api/workspaces` | Create workspace |
+| `DELETE` | `/api/workspaces/:id` | Delete a workspace and all of its endpoints |
 | `POST` | `/api/workspaces/:id/api-key` | Enable, disable, or rotate workspace API key |
 | `GET` | `/api/workspaces/:id/endpoints` | List endpoints with `q`, `method`, `limit`, `offset` |
-| `POST` | `/api/workspaces/:id/endpoints` | Create endpoint |
+| `POST` | `/api/workspaces/:id/endpoints` | Create endpoint (max 100 per workspace) |
 | `PUT` | `/api/endpoints/:id` | Update endpoint |
 | `DELETE` | `/api/endpoints/:id` | Delete endpoint |
 | `GET` | `/api/workspaces/:id/logs` | Request history with `q`, `limit`, `offset` |
-| `ANY` | `/api/mock/:workspaceSlug/:path` | Public mock endpoint |
-| `GET` | `/api/docs/:workspaceSlug/openapi` | Public OpenAPI JSON |
+| `ANY` | `/api/mock/:workspaceSlug/:path` | Public mock endpoint (CORS-enabled, callable from any frontend origin) |
+| `GET` | `/api/docs/:workspaceSlug/openapi` | Public OpenAPI JSON (CORS-enabled) |
 | `POST` | `/api/ollama/sample` | Generate sample JSON using local Ollama |
 
 Protected mock endpoints accept the generated API key through:
@@ -462,6 +463,8 @@ Protected mock endpoints accept the generated API key through:
 ```text
 x-mockapi-key: mk_live_...
 ```
+
+**Cross-origin use:** `/api/mock/*` and `/api/docs/*/openapi` send `Access-Control-Allow-Origin: *` and handle `OPTIONS` preflight requests, so a browser-based frontend running on any domain or port can call them directly with `fetch`/`axios` — this is the main way these endpoints are meant to be used, from a separate frontend app.
 
 ## Optional Local LLM
 
@@ -523,6 +526,12 @@ The method, workspace slug, or path doesn't match exactly what you saved — moc
 **Calling a mock URL returns 401.**
 That workspace has API key protection enabled. Add the header `x-mockapi-key: <your key>`, generated from **Public endpoint security** in the dashboard.
 
+**My browser console shows a CORS error calling a mock URL.**
+This shouldn't happen — `/api/mock/*` and `/api/docs/*/openapi` both send `Access-Control-Allow-Origin: *`. If you still see one, check you're calling the exact mock URL (not a dashboard-only route) and that you're on a build that includes CORS support (anything after this was added).
+
+**I want to delete a workspace, not just an endpoint.**
+Open the workspace and click **Delete workspace** in the overview panel. This permanently removes it and every endpoint inside it (request history for it stays in the logs but is no longer linked to a live endpoint). There's a limit of 20 workspaces and 100 endpoints per workspace to prevent runaway usage.
+
 **`pnpm install` stops and asks about "ignored build scripts".**
 Run `pnpm approve-builds`, approve `sharp` and `unrs-resolver`, then run `pnpm install` again.
 
@@ -536,7 +545,9 @@ To practice a realistic relational schema with foreign keys, cascading deletes, 
 
 Ideas for future iterations, not yet built:
 
-- Move rate limiting to Redis/Upstash so it survives restarts and works across multiple server instances.
+- Deploy to a live URL with a hosted MySQL database, so anyone can use it without cloning the repo.
+- Password reset and email verification (needs an email-sending service — not yet wired up).
+- Move rate limiting to Redis/Upstash so it survives restarts and works across multiple server instances, including serverless deploys.
 - Response templating (e.g. `{{faker.name}}`) instead of only static JSON.
 - Team workspaces with shared access instead of single-owner workspaces.
 - Webhook replay: forward a logged request to a real backend once it's ready.

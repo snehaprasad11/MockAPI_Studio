@@ -1,3 +1,4 @@
+import { corsPreflight, withCors } from "@/lib/cors";
 import { queryOne, queryRows } from "@/lib/db";
 import { mapEndpoint, mapWorkspace } from "@/lib/mappers";
 import { buildOpenApiDocument } from "@/lib/openapi";
@@ -59,7 +60,7 @@ export async function GET(request: Request, context: RouteContext) {
   );
 
   if (!workspaceRow) {
-    return Response.json({ error: "Workspace not found." }, { status: 404 });
+    return withCors(Response.json({ error: "Workspace not found." }, { status: 404 }));
   }
 
   const workspace = mapWorkspace(workspaceRow);
@@ -76,9 +77,15 @@ export async function GET(request: Request, context: RouteContext) {
   const baseUrl = new URL(request.url).origin;
   const document = buildOpenApiDocument(workspace, endpointRows.map(mapEndpoint), baseUrl);
 
-  return Response.json(document, {
-    headers: {
-      "Cache-Control": "no-store",
-    },
-  });
+  return withCors(
+    Response.json(document, {
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    }),
+  );
+}
+
+export async function OPTIONS() {
+  return corsPreflight();
 }
