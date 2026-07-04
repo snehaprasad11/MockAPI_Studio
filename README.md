@@ -6,6 +6,13 @@ MockAPI Studio is a full-stack developer SaaS project where frontend developers 
 
 Repository: [snehaprasad11/MockAPI_Studio](https://github.com/snehaprasad11/MockAPI_Studio)
 
+**Live app: [mockapi-studio-one.vercel.app](https://mockapi-studio-one.vercel.app)** — no setup needed, try it right now with:
+
+```text
+Email: demo@mockapi.local
+Password: password123
+```
+
 ![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-Strict-blue)
 ![Tailwind](https://img.shields.io/badge/Tailwind-CSS-38bdf8)
@@ -498,19 +505,20 @@ pnpm build
 
 ## Deployment Notes
 
-This is a full-stack app with MySQL, so it needs a host that supports:
+The live app runs on:
+
+- **[Vercel](https://vercel.com)** (Hobby/free tier) for the Next.js app and serverless API routes.
+- **[TiDB Cloud Serverless](https://tidbcloud.com)** (free tier) for MySQL-compatible storage — it speaks the MySQL wire protocol, so no query changes were needed versus local MySQL, only enabling `DATABASE_SSL=true` since TiDB Cloud requires TLS on its public endpoint.
+
+Deploys are currently manual (`vercel --prod`) rather than auto-triggered on push, since that requires linking a GitHub login connection in the Vercel account settings — a one-time account-level step.
+
+If you're setting this up yourself on a different host, it needs:
 
 - Node.js server runtime
-- Environment variables
-- A reachable MySQL database
+- Environment variables (see `.env.example`)
+- A reachable MySQL-compatible database with TLS if the provider requires it
 
-Good free/local-first demo options:
-
-- Run locally and record a demo video.
-- Deploy the app to a Node-friendly platform with a free tier if available.
-- Use a local MySQL database for live walkthroughs.
-
-Avoid static-only hosts for the full app because the mock endpoint runtime and database APIs require a server.
+Avoid static-only hosts because the mock endpoint runtime and database APIs require a server.
 
 ## FAQ and Troubleshooting
 
@@ -545,9 +553,9 @@ To practice a realistic relational schema with foreign keys, cascading deletes, 
 
 Ideas for future iterations, not yet built:
 
-- Deploy to a live URL with a hosted MySQL database, so anyone can use it without cloning the repo.
+- Connect the GitHub repo to Vercel for auto-deploy on push, instead of manual `vercel --prod`.
 - Password reset and email verification (needs an email-sending service — not yet wired up).
-- Move rate limiting to Redis/Upstash so it survives restarts and works across multiple server instances, including serverless deploys.
+- Move rate limiting to Redis/Upstash so it survives restarts and works across multiple server instances — the in-memory limiter resets on every deploy/cold start on Vercel's serverless functions.
 - Response templating (e.g. `{{faker.name}}`) instead of only static JSON.
 - Team workspaces with shared access instead of single-owner workspaces.
 - Webhook replay: forward a logged request to a real backend once it's ready.
