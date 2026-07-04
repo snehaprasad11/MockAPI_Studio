@@ -11,6 +11,30 @@ Repository: [snehaprasad11/MockAPI_Studio](https://github.com/snehaprasad11/Mock
 ![Tailwind](https://img.shields.io/badge/Tailwind-CSS-38bdf8)
 ![MySQL](https://img.shields.io/badge/MySQL-Database-4479a1)
 ![Ollama](https://img.shields.io/badge/Ollama-Optional%20Local%20LLM-222)
+[![CI](https://github.com/snehaprasad11/MockAPI_Studio/actions/workflows/ci.yml/badge.svg)](https://github.com/snehaprasad11/MockAPI_Studio/actions/workflows/ci.yml)
+
+## Contents
+
+- [Demo Video](#demo-video)
+- [Screenshots](#screenshots)
+- [Why This Exists](#why-this-exists)
+- [How It Compares](#how-it-compares)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Local Setup](#local-setup)
+- [User Manual](#user-manual)
+- [Try It With curl (No UI Needed)](#try-it-with-curl-no-ui-needed)
+- [API Overview](#api-overview)
+- [Optional Local LLM](#optional-local-llm)
+- [Testing](#testing)
+- [Validation](#validation)
+- [Deployment Notes](#deployment-notes)
+- [FAQ and Troubleshooting](#faq-and-troubleshooting)
+- [Roadmap](#roadmap)
+- [Resume Bullets](#resume-bullets)
+- [Status](#status)
 
 ## Demo Video
 
@@ -51,6 +75,21 @@ Returns:
 ]
 ```
 
+## How It Compares
+
+There are other ways to fake an API. Here's where MockAPI Studio fits:
+
+| | MockAPI Studio | `json-server` / local mock file | Postman Mock Servers |
+| --- | --- | --- | --- |
+| Setup | Self-hosted, own accounts | Runs locally, no accounts | Hosted by Postman |
+| Sharing a mock URL with a teammate | Built-in public URL per endpoint | Needs your machine reachable | Yes |
+| Auto-generated docs | Yes, per workspace | No | Yes |
+| Request history / logs | Yes, searchable | No | Limited |
+| Error and delay simulation | Built into the endpoint form | Manual scripting | Manual scripting |
+| Cost | Free, self-hosted | Free | Free tier is limited |
+
+The tradeoff: MockAPI Studio needs its own server and a MySQL database running, whereas `json-server` is a single local command. It's the right tool when you want shareable URLs, generated docs, and a request log — not just a local file.
+
 ## Features
 
 - User registration and login with cookie-based sessions.
@@ -81,6 +120,73 @@ Returns:
 | Testing | Vitest (lib helpers + route handlers) |
 | Optional AI | Local Ollama only, no paid API required |
 | Tooling | ESLint, TypeScript, pnpm |
+
+## Architecture
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full write-up. The short version:
+
+```mermaid
+flowchart LR
+    Dev["Developer (browser)"] -->|"login / CRUD"| Dash["Studio Dashboard\n(Next.js client)"]
+    Dash -->|"fetch"| API["Next.js API Routes"]
+    API --> DB[("MySQL")]
+
+    App["Frontend app under test / curl"] -->|"GET, POST, PUT, PATCH, DELETE"| Mock["/api/mock/:workspace/:path"]
+    Mock --> DB
+    Mock -->|"writes"| Logs["request_logs"]
+
+    Viewer["Anyone with the link"] --> Docs["/docs/:workspace"]
+    Viewer --> OpenAPI["/api/docs/:workspace/openapi"]
+    Docs --> DB
+    OpenAPI --> DB
+```
+
+Database shape (see [`database/schema.sql`](database/schema.sql)):
+
+```mermaid
+erDiagram
+    USERS ||--o{ WORKSPACES : owns
+    WORKSPACES ||--o{ ENDPOINTS : contains
+    ENDPOINTS ||--o{ REQUEST_LOGS : "called via"
+
+    USERS {
+        bigint id PK
+        varchar name
+        varchar email
+        varchar password_hash
+    }
+    WORKSPACES {
+        bigint id PK
+        bigint user_id FK
+        varchar name
+        varchar slug
+        boolean api_key_enabled
+        varchar api_key_hash
+    }
+    ENDPOINTS {
+        bigint id PK
+        bigint workspace_id FK
+        enum method
+        varchar path
+        int status_code
+        int response_delay_ms
+        json response_body
+        boolean error_enabled
+    }
+    REQUEST_LOGS {
+        bigint id PK
+        bigint endpoint_id FK "nullable, SET NULL on delete"
+        varchar workspace_slug
+        varchar method
+        int status_code
+    }
+```
+
+Key design decisions:
+
+- **Sessions, not JWTs in `localStorage`.** Sessions are HMAC-signed and stored in HTTP-only cookies, so they can't be read or tampered with from client-side JavaScript.
+- **API keys are hashed, never stored in plaintext.** The plaintext key is shown exactly once, right after generation or rotation.
+- **The mock endpoint runtime is a single dynamic route** (`/api/mock/[workspaceSlug]/[...path]`) that looks up the stored endpoint row, applies delay/error simulation, logs the request, and returns the stored JSON — all in one place, regardless of HTTP method.
 
 ## Project Structure
 
@@ -303,6 +409,34 @@ If you have [Ollama](https://ollama.com) installed and running locally, the endp
 
 Click **Logout** in the header at any time to end your session.
 
+## Try It With curl (No UI Needed)
+
+Everything the dashboard does is just calling these same API routes, so the whole flow works from a terminal too. This uses a cookie jar (`-c`/`-b`) to carry the session between requests.
+
+```bash
+BASE=http://localhost:3000
+
+# 1. Register (also logs you in and saves the session cookie)
+curl -sc cookies.txt -X POST "$BASE/api/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Sneha","email":"sneha@example.com","password":"password123"}'
+
+# 2. Create a workspace (note the returned "id")
+curl -sb cookies.txt -X POST "$BASE/api/workspaces" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Demo Store","slug":"demo-store","description":"Mock APIs for a storefront"}'
+
+# 3. Create an endpoint in that workspace (replace 1 with the workspace id from step 2)
+curl -sb cookies.txt -X POST "$BASE/api/workspaces/1/endpoints" \
+  -H "Content-Type: application/json" \
+  -d '{"method":"GET","path":"/products","statusCode":200,"responseBody":[{"id":1,"name":"Launch Kit","price":49}]}'
+
+# 4. Call the public mock URL — no cookie needed, this is the part your frontend app would call
+curl -i "$BASE/api/mock/demo-store/products"
+```
+
+Step 4 returns your exact JSON with the status code you configured, and logs the call in that workspace's request history.
+
 ## API Overview
 
 | Method | Route | Purpose |
@@ -374,6 +508,38 @@ Good free/local-first demo options:
 - Use a local MySQL database for live walkthroughs.
 
 Avoid static-only hosts for the full app because the mock endpoint runtime and database APIs require a server.
+
+## FAQ and Troubleshooting
+
+**Login says "Authentication required" on dashboard pages.**
+The session cookie is missing or expired. Log in again from `/dashboard`. Sessions last 7 days.
+
+**I get a 429 error when logging in or registering.**
+That's the rate limiter — 5 attempts per 15 minutes per IP address, to slow down brute-force guessing. Wait for the time in the `Retry-After` response header, or restart the dev server (the limiter is in-memory and resets on restart).
+
+**Calling a mock URL returns "Mock endpoint not found".**
+The method, workspace slug, or path doesn't match exactly what you saved — mock matching is case-sensitive on the path and exact on the HTTP method. Double-check the URL against the endpoint's **Copy URL** button.
+
+**Calling a mock URL returns 401.**
+That workspace has API key protection enabled. Add the header `x-mockapi-key: <your key>`, generated from **Public endpoint security** in the dashboard.
+
+**`pnpm install` stops and asks about "ignored build scripts".**
+Run `pnpm approve-builds`, approve `sharp` and `unrs-resolver`, then run `pnpm install` again.
+
+**The app builds but the database connection fails.**
+Confirm MySQL is running and `.env.local` has the right host/port/user/password, then re-run the migration and seed files in `database/migrations/`.
+
+**Why MySQL instead of a simpler file-based database?**
+To practice a realistic relational schema with foreign keys, cascading deletes, and indexes — closer to what a production backend actually looks like — rather than a toy in-memory store.
+
+## Roadmap
+
+Ideas for future iterations, not yet built:
+
+- Move rate limiting to Redis/Upstash so it survives restarts and works across multiple server instances.
+- Response templating (e.g. `{{faker.name}}`) instead of only static JSON.
+- Team workspaces with shared access instead of single-owner workspaces.
+- Webhook replay: forward a logged request to a real backend once it's ready.
 
 ## Resume Bullets
 
