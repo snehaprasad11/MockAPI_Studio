@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 import { createSessionToken, getSessionCookieName, verifyPassword } from "@/lib/auth";
 import { queryOne } from "@/lib/db";
-import { badRequest, serverError } from "@/lib/responses";
+import { clientIp, createRateLimiter } from "@/lib/rate-limit";
+import { badRequest, serverError, tooManyRequests } from "@/lib/responses";
 import { ensureObjectBody } from "@/lib/validation";
 
 type LoginUserRow = {
@@ -10,8 +11,13 @@ type LoginUserRow = {
   password_hash: string;
 };
 
+const loginRateLimiter = createRateLimiter({ limit: 5, windowMs: 15 * 60 * 1000 });
+
 export async function POST(request: Request) {
   try {
+    const rateLimit = loginRateLimiter(clientIp(request));
+    if (!rateLimit.allowed) return tooManyRequests(rateLimit.retryAfterSeconds);
+
     const body = ensureObjectBody(await request.json());
     const email = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");

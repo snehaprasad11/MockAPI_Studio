@@ -2,15 +2,21 @@ import { NextResponse } from "next/server";
 
 import { createSessionToken, getSessionCookieName, hashPassword } from "@/lib/auth";
 import { execute, queryOne } from "@/lib/db";
-import { badRequest, serverError } from "@/lib/responses";
+import { clientIp, createRateLimiter } from "@/lib/rate-limit";
+import { badRequest, serverError, tooManyRequests } from "@/lib/responses";
 import { ensureObjectBody } from "@/lib/validation";
 
 type ExistingUserRow = {
   id: number;
 };
 
+const registerRateLimiter = createRateLimiter({ limit: 5, windowMs: 15 * 60 * 1000 });
+
 export async function POST(request: Request) {
   try {
+    const rateLimit = registerRateLimiter(clientIp(request));
+    if (!rateLimit.allowed) return tooManyRequests(rateLimit.retryAfterSeconds);
+
     const body = ensureObjectBody(await request.json());
     const name = String(body.name ?? "").trim();
     const email = String(body.email ?? "").trim().toLowerCase();
