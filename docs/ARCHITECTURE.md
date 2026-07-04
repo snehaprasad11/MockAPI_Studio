@@ -63,6 +63,7 @@ Auth is intentionally simple and portfolio-friendly:
 
 - Non-destructive migrations live in `database/migrations`.
 - Endpoint and request-log list APIs support `q`, `limit`, and `offset`.
+- Login and registration are rate-limited per IP (5 attempts / 15 minutes) to slow brute-force attempts. The limiter is in-memory, so it resets on restart and only applies within a single server process.
 - GitHub Actions runs typecheck, lint, tests, and production build on pushes and pull requests.
 
 ## Local LLM

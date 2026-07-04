@@ -8,6 +8,13 @@ export function unauthorized() {
   return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 }
 
+export function tooManyRequests(retryAfterSeconds: number) {
+  return NextResponse.json(
+    { error: "Too many attempts. Please try again later." },
+    { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } },
+  );
+}
+
 export function serverError(error: unknown) {
   console.error(error);
   return NextResponse.json(
