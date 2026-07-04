@@ -15,7 +15,10 @@ export function getPool() {
       database: process.env.DATABASE_NAME ?? "mockapi_studio",
       connectionLimit: 10,
       namedPlaceholders: true,
-      ssl: process.env.DATABASE_SSL === "true" ? { minVersion: "TLSv1.2" } : undefined,
+      ssl:
+        (process.env.DATABASE_SSL ?? "").trim().toLowerCase() === "true"
+          ? { minVersion: "TLSv1.2" }
+          : undefined,
     });
   }
 
