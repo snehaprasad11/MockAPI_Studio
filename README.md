@@ -47,17 +47,48 @@ Password: password123
 
 [Watch the MockAPI Studio demo video](docs/demo/mockapi-studio-demo.mp4)
 
-The demo covers the landing page, authentication, workspace creation, endpoint builder, JSON/status/delay/error settings, public mock URLs, dashboard metrics, request history, generated docs, OpenAPI export, optional Ollama generation, and MySQL persistence.
+Every frame in the video is a real screenshot of the app actually running against its live database — not a mockup. It walks through: logging in with the demo credentials, the workspace dashboard and live metrics, building a mock endpoint, testing it and reading the response in real time, the auto-generated public docs, the OpenAPI JSON export, and how the same dashboard looks on a tablet and a phone.
 
 ## Screenshots
 
-| Landing Page | Register / Login |
-| --- | --- |
-| ![MockAPI Studio landing page](docs/demo/frames/01-landing.png) | ![MockAPI Studio register and login form](docs/demo/frames/02-auth.png) |
+All screenshots below are captured directly from the running app (desktop, tablet, and mobile viewports), not illustrations.
 
-| Studio Dashboard | Public API Docs |
+### Desktop
+
+| Landing Page | Sign In |
 | --- | --- |
-| ![MockAPI Studio dashboard with a workspace and its overview](docs/demo/frames/03-dashboard-overview.png) | ![Auto-generated public API docs page](docs/demo/frames/05-public-docs.png) |
+| ![MockAPI Studio landing page](docs/demo/frames/01-landing.png) | ![Login form with demo credentials filled in](docs/demo/frames/03-auth-filled.png) |
+
+| Workspace Dashboard | Test Console & Request History |
+| --- | --- |
+| ![Authenticated dashboard showing workspace overview, metrics, and API key panel](docs/demo/frames/04-dashboard-overview.png) | ![Test console showing a live 200 response and request history](docs/demo/frames/05-test-console.png) |
+
+| Auto-Generated Public Docs | OpenAPI JSON Export |
+| --- | --- |
+| ![Public docs page listing endpoints with example responses and curl commands](docs/demo/frames/06-public-docs.png) | ![OpenAPI 3.1 JSON document for the workspace](docs/demo/frames/07-openapi-json.png) |
+
+### Responsive — Tablet & Mobile
+
+The same dashboard, unmodified, at 768px (tablet) and 375px (phone) viewport widths — full page captures showing every section reflows into a single column with no horizontal scrolling or clipped content.
+
+<table>
+<tr>
+<th>Tablet (768px)</th>
+<th>Mobile (375px)</th>
+</tr>
+<tr>
+<td><img src="docs/demo/frames/09-tablet-dashboard.png" width="280" alt="Full dashboard reflowed for a 768px tablet viewport"></td>
+<td><img src="docs/demo/frames/11-mobile-dashboard.png" width="200" alt="Full dashboard reflowed for a 375px mobile viewport"></td>
+</tr>
+</table>
+
+Verified working across:
+
+| Device class | Viewport tested | Result |
+| --- | --- | --- |
+| Desktop / laptop | 1280×800 | Two-column layouts, full sidebar + content grid |
+| Tablet | 768×1024 | Single-column stack, all forms and buttons full-width |
+| Mobile | 375×812 | Single-column stack, header wraps below the title, no horizontal scroll |
 
 ## Why This Exists
 
@@ -343,13 +374,13 @@ This section is a plain-language walkthrough for anyone using the deployed app o
 
 Open the app and click **Open Studio** (or go straight to `/dashboard`). Switch between the **Register** and **Login** tabs at the top of the form. Registering needs a name, an email, and a password of at least 8 characters.
 
-![Register and login form](docs/demo/frames/02-auth.png)
+![Register and login form with demo credentials filled in](docs/demo/frames/03-auth-filled.png)
 
 ### 2. Create a workspace
 
 A **workspace** is just a folder for the fake APIs belonging to one project (e.g. "Demo Store", "Checkout Redesign"). Fill in a name — the public URL slug fills in automatically — and an optional description, then click **Create workspace**. You can create as many workspaces as you want; switch between them from the **Workspaces** list on the left.
 
-![Dashboard with a created workspace and its overview](docs/demo/frames/03-dashboard-overview.png)
+![Dashboard with a created workspace and its overview](docs/demo/frames/04-dashboard-overview.png)
 
 ### 3. Add a mock endpoint
 
@@ -367,6 +398,8 @@ Click **Save endpoint** when done.
 ### 4. Test your endpoint
 
 Every saved endpoint gets a **Test** button. Click it to actually call the generated URL and see the live status code, response time, and JSON body in the **Test Console** right below.
+
+![Test console showing a live 200 response next to the endpoint list and request history](docs/demo/frames/05-test-console.png)
 
 ### 5. Use the endpoint in your own app
 
@@ -396,7 +429,7 @@ Every workspace gets a free, human-readable docs page listing every endpoint, it
 /docs/<workspace-slug>
 ```
 
-![Auto-generated public API docs page](docs/demo/frames/05-public-docs.png)
+![Auto-generated public API docs page](docs/demo/frames/06-public-docs.png)
 
 There's also a machine-readable OpenAPI JSON export of the same workspace, useful for importing into Postman, Swagger UI, or codegen tools:
 
